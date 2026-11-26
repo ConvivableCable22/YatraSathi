@@ -1012,7 +1012,7 @@ export async function handleRetryBookingReceipt(bookingId, sessionUser, requestB
     return jsonResponse(403, { ok: false, code: 'FORBIDDEN' });
   }
 
-  const recipientEmail = sessionUser.email || (requestBody && requestBody.email);
+  const recipientEmail = sessionUser.email;
   if (!isValidEmailSyntax(recipientEmail)) {
     return jsonResponse(400, { ok: false, code: 'INVALID_EMAIL' });
   }

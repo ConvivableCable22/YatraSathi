@@ -22,12 +22,15 @@
     activeTripId: 'trip-1',
     isOffline: false,
     isAuthenticated: false,
+    userId: null,
     uiMode: 'normal',
     userDisplayName: 'Arnav Sharma',
     dataSourceLabel: 'Prototype Mode',
     savedDestinations: new Set(),
+    unlockedBadges: new Set(),
     itineraryItems: [],
     bookingNotes: [],
+    reviews: [],
     recentActivity: [
       { text: 'Loaded Rajasthan Heritage Loop workspace', time: 'Just now' }
     ],
@@ -65,6 +68,41 @@
     ]
   };
 
+  function scopedStoragePrefix(prefix) {
+    if (state.isAuthenticated && state.userId) {
+      return `yatrasathi_u_${state.userId}_${prefix}`;
+    }
+    return `yatrasathi_${prefix}`;
+  }
+
+  function scopedStorageKey(suffix) {
+    return scopedStoragePrefix(suffix);
+  }
+
+  function clearLegacyUnscopedStorage() {
+    try {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('yatrasathi_') && !key.startsWith('yatrasathi_u_')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  function clearAllUserStorage() {
+    try {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('yatrasathi_')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
   // Development-only API origin when UI runs on Live Server (port 5500); empty string in production & Wrangler
   function getApiBase() {
     const host = window.location.hostname;
@@ -79,9 +117,149 @@
     const resp = await fetch(getApiBase() + path, Object.assign({ credentials: 'include', headers }, options));
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) {
-      throw new Error(data.message || `Request failed (${resp.status})`);
+      const err = new Error(data.message || `Request failed (${resp.status})`);
+      err.status = resp.status;
+      err.code = data.code || '';
+      throw err;
     }
     return data;
+  }
+
+  const leafletMapInstances = new WeakMap();
+  function escapeHtmlAttr(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  const DESTINATION_CENTERS = {
+    rajasthan: [26.9258, 75.8237],
+    kerala: [10.0977, 77.0531],
+    goa: [15.4909, 73.8278],
+    varanasi: [25.3176, 82.9739],
+    ladakh: [34.1526, 77.5771]
+  };
+
+  function getActiveDestinationCenter() {
+    const trip = state.trips.find(t => t.id === state.activeTripId) || state.trips[0];
+    const theme = (trip && trip.theme) || 'rajasthan';
+    return DESTINATION_CENTERS[theme] || DESTINATION_CENTERS.rajasthan;
+  }
+
+  function renderLeafletMap({ mapEl, fallbackEl, badgeEl, stops, focusedIndex, onMarkerSelect, totalsEl }) {
+    if (!mapEl) return;
+    const coordStops = (stops || []).filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+    const destCenter = getActiveDestinationCenter();
+
+    if (typeof window.L === 'undefined') {
+      if (fallbackEl) {
+        fallbackEl.innerHTML = '<strong>Map Library Unavailable</strong><span>Leaflet could not be loaded (offline or blocked). Use the ordered stop list.</span><button type="button" class="btn btn-secondary btn-retry-map" style="margin-top: 6px; min-height: 36px; padding: 6px 14px; font-size: 0.8125rem;">Retry Map</button>';
+        fallbackEl.style.display = 'flex';
+        const retryBtn = fallbackEl.querySelector('.btn-retry-map');
+        if (retryBtn) {
+          retryBtn.addEventListener('click', () => renderLeafletMap({ mapEl, fallbackEl, badgeEl, stops, focusedIndex, onMarkerSelect, totalsEl }));
+        }
+      }
+      if (badgeEl) badgeEl.textContent = 'Map Unavailable • Ordered Stop List';
+      return;
+    }
+
+    // Defer Leaflet initialization until the section is visible with a nonzero box
+    if (mapEl.offsetWidth === 0 || mapEl.offsetHeight === 0) {
+      return;
+    }
+
+    if (fallbackEl) fallbackEl.style.display = 'none';
+
+    const initialCenter = coordStops.length ? [coordStops[0].lat, coordStops[0].lng] : destCenter;
+    let entry = leafletMapInstances.get(mapEl);
+    if (!entry) {
+      const map = window.L.map(mapEl, {
+        center: initialCenter,
+        zoom: 12,
+        zoomControl: true
+      });
+      const tileLayer = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      });
+      let tileErrors = 0;
+      tileLayer.on('tileload', () => {
+        tileErrors = 0;
+        if (fallbackEl) fallbackEl.style.display = 'none';
+      });
+      tileLayer.on('tileerror', () => {
+        tileErrors++;
+        if (tileErrors >= 3 && fallbackEl) {
+          fallbackEl.innerHTML = '<strong>Map Tiles Failed to Load</strong><span>OpenStreetMap tiles could not be loaded (check your connection). Your ordered stops remain in the list.</span><button type="button" class="btn btn-secondary btn-retry-tiles" style="margin-top: 6px; min-height: 36px; padding: 6px 14px; font-size: 0.8125rem;">Retry Tiles</button>';
+          fallbackEl.style.display = 'flex';
+          const retryTilesBtn = fallbackEl.querySelector('.btn-retry-tiles');
+          if (retryTilesBtn) {
+            retryTilesBtn.addEventListener('click', () => {
+              tileErrors = 0;
+              fallbackEl.style.display = 'none';
+              tileLayer.redraw();
+            });
+          }
+        }
+      });
+      tileLayer.addTo(map);
+      const layerGroup = window.L.layerGroup().addTo(map);
+      entry = { map, layerGroup };
+      leafletMapInstances.set(mapEl, entry);
+    }
+
+    entry.layerGroup.clearLayers();
+    const latLngs = coordStops.map(s => [s.lat, s.lng]);
+
+    if (latLngs.length >= 2) {
+      window.L.polyline(latLngs, {
+        color: '#06706B',
+        weight: 4,
+        opacity: 0.9,
+        dashArray: '8, 6'
+      }).addTo(entry.layerGroup);
+    }
+
+    coordStops.forEach((stop, idx) => {
+      const shortName = escapeHtmlAttr(stop.name.split(' ').slice(0, 2).join(' '));
+      const isFocused = idx === focusedIndex;
+      const icon = window.L.divIcon({
+        className: 'leaflet-numbered-pin',
+        html: `<span class="leaflet-pin-pill${isFocused ? ' active' : ''}"><span class="leaflet-pin-num">${idx + 1}</span><span>${shortName}</span></span>`,
+        iconSize: null,
+        iconAnchor: [14, 14]
+      });
+      const marker = window.L.marker([stop.lat, stop.lng], { icon, zIndexOffset: isFocused ? 500 : 0 });
+      marker.bindPopup(`<strong>${idx + 1}. ${escapeHtmlAttr(stop.name)}</strong><br>${escapeHtmlAttr(stop.notes || stop.location || '')}`);
+      marker.on('click', () => {
+        if (typeof onMarkerSelect === 'function') onMarkerSelect(idx);
+      });
+      marker.addTo(entry.layerGroup);
+    });
+
+    if (latLngs.length > 1) {
+      entry.map.fitBounds(window.L.latLngBounds(latLngs), { padding: [36, 36] });
+    } else if (latLngs.length === 1) {
+      entry.map.setView(latLngs[0], 13);
+    } else {
+      entry.map.setView(destCenter, 12);
+    }
+
+    setTimeout(() => entry.map.invalidateSize(), 120);
+
+    if (badgeEl) {
+      if (!coordStops.length) {
+        badgeEl.textContent = 'OpenStreetMap • Destination center (stops lack coordinates)';
+      } else {
+        badgeEl.textContent = latLngs.length >= 2
+          ? 'Straight-line preview • Not road directions or travel times'
+          : 'OpenStreetMap • Stop location';
+      }
+    }
+    if (totalsEl) {
+      totalsEl.textContent = coordStops.length
+        ? `${coordStops.length} mapped stop${coordStops.length === 1 ? '' : 's'} • Straight-line preview`
+        : `${(stops || []).length} stop(s) • Coordinates unavailable`;
+    }
   }
 
   // --- 2. Toast Notice Controller ---
@@ -163,6 +341,12 @@
       window.__yatraRenderExpenses();
     } else if (sectionId === 'my-trips' && typeof window.__yatraRenderMyTrips === 'function') {
       window.__yatraRenderMyTrips();
+    } else if (sectionId === 'itinerary-builder' && typeof window.__yatraRenderItineraryMap === 'function') {
+      requestAnimationFrame(() => window.__yatraRenderItineraryMap());
+    } else if (sectionId === 'maps-routes' && typeof window.__yatraRenderMapsSection === 'function') {
+      requestAnimationFrame(() => window.__yatraRenderMapsSection());
+    } else if (sectionId === 'trip-reviews' && typeof window.__yatraRenderReviews === 'function') {
+      window.__yatraRenderReviews();
     }
 
     // 4. Close mobile drawer if open
@@ -212,6 +396,36 @@
     }
   }
 
+  function renderActiveTripItineraryList(tripId) {
+    const activitiesContainer = document.getElementById('activities-container');
+    if (!activitiesContainer) return;
+    const activeItems = (state.itineraryItems || []).filter(it => it.tripId === tripId);
+    activitiesContainer.innerHTML = activeItems.length
+      ? activeItems.map(it => {
+          const dayNum = String(it.dayKey || 'day-1').replace(/^day-/i, '');
+          return `
+          <article class="activity-card" data-item-id="${it.id}">
+            <div class="activity-time-col">
+              <span class="badge badge-teal" style="margin-bottom: 4px; font-size: 0.6875rem;">Day ${dayNum}</span>
+              <span class="activity-time">${it.timeLabel}</span>
+              <span class="activity-duration">${it.durationLabel}</span>
+            </div>
+            <div class="activity-body">
+              <h4 class="activity-title">${it.title}</h4>
+              <div class="activity-location"><span>${it.location || 'Local Area'}</span></div>
+              ${it.notes ? `<p class="activity-notes">${it.notes}</p>` : ''}
+            </div>
+            <div class="activity-cost-col">
+              <span class="cost-estimate-label">Estimated Cost</span>
+              <span class="cost-estimate-val">₹${Math.round((it.estimatedCostPaise || 0) / 100).toLocaleString('en-IN')}</span>
+              <button class="btn-delete-item" type="button" title="Delete activity" aria-label="Delete activity">×</button>
+            </div>
+          </article>
+        `;
+        }).join('')
+      : '<div class="empty-state-card" style="padding: var(--space-lg);"><h3 class="empty-state-title">No itinerary items yet</h3><p class="empty-state-desc">Add an activity or choose a curated stop to build your day plan.</p></div>';
+  }
+
   // --- 4. Active Trip Context Synchronization ---
   function syncActiveTripUI(tripId) {
     const trip = state.trips.find(t => t.id === tripId) || state.trips[0];
@@ -241,8 +455,13 @@
       expRemaining.textContent = `₹${rem.toLocaleString('en-IN')}`;
     }
 
+    renderActiveTripItineraryList(trip.id);
+
     if (typeof window.__yatraRefreshItineraryPlanner === 'function') {
       window.__yatraRefreshItineraryPlanner(trip);
+    }
+    if (typeof window.__yatraRenderMapsSection === 'function') {
+      window.__yatraRenderMapsSection();
     }
   }
 
@@ -485,7 +704,128 @@
       });
     });
 
-    // --- FEATURE B: Create Trip Form Submission ---
+    // --- FEATURE B: Flexible State / Multi-Destination / Duration Trip Form ---
+    const FLEX_STATE_CATALOG = {
+      rajasthan: {
+        label: 'Rajasthan',
+        destinations: {
+          jaipur: { label: 'Jaipur', placesCount: 5 },
+          jodhpur: { label: 'Jodhpur', placesCount: 4 },
+          jaisalmer: { label: 'Jaisalmer', placesCount: 4 },
+          udaipur: { label: 'Udaipur', placesCount: 4 }
+        }
+      },
+      kerala: {
+        label: 'Kerala',
+        destinations: {
+          munnar: { label: 'Munnar', placesCount: 4 },
+          alleppey: { label: 'Alleppey', placesCount: 3 },
+          kochi: { label: 'Kochi', placesCount: 3 },
+          thekkady: { label: 'Thekkady', placesCount: 2 }
+        }
+      },
+      goa: {
+        label: 'Goa',
+        destinations: {
+          panaji: { label: 'Panaji & Old Goa', placesCount: 3 },
+          'north-goa': { label: 'North Goa', placesCount: 2 },
+          'south-goa': { label: 'South Goa', placesCount: 2 }
+        }
+      },
+      'uttar-pradesh': {
+        label: 'Uttar Pradesh',
+        destinations: {
+          varanasi: { label: 'Varanasi', placesCount: 3 },
+          agra: { label: 'Agra', placesCount: 3 },
+          lucknow: { label: 'Lucknow', placesCount: 2 }
+        }
+      },
+      ladakh: {
+        label: 'Ladakh',
+        destinations: {
+          leh: { label: 'Leh', placesCount: 2 },
+          nubra: { label: 'Nubra Valley', placesCount: 2 },
+          pangong: { label: 'Pangong Tso', placesCount: 1 }
+        }
+      }
+    };
+
+    const tripStateSelect = document.getElementById('new-trip-state');
+    const tripPlacesGroup = document.getElementById('new-trip-places-group');
+    const tripPlacesHint = document.getElementById('new-trip-places-hint');
+    const tripDestHidden = document.getElementById('new-trip-destination');
+    const tripDurationInput = document.getElementById('new-trip-duration');
+    const tripStartInput = document.getElementById('new-trip-start');
+    const tripEndInput = document.getElementById('new-trip-end');
+
+    function getSelectedPlaceIds() {
+      if (!tripPlacesGroup) return [];
+      const stateKey = tripStateSelect ? tripStateSelect.value : 'rajasthan';
+      const validMap = (FLEX_STATE_CATALOG[stateKey] && FLEX_STATE_CATALOG[stateKey].destinations) || {};
+      return Array.from(tripPlacesGroup.querySelectorAll('.explore-vibe-chip.active'))
+        .map(btn => btn.getAttribute('data-place-id'))
+        .filter(id => Boolean(validMap[id]));
+    }
+
+    function syncDestinationSummary() {
+      const stateKey = tripStateSelect ? tripStateSelect.value : 'rajasthan';
+      const stateDef = FLEX_STATE_CATALOG[stateKey];
+      const selected = getSelectedPlaceIds();
+      if (tripDestHidden && stateDef) {
+        tripDestHidden.value = selected.map(id => stateDef.destinations[id].label).join(', ');
+      }
+      if (tripPlacesHint && stateDef) {
+        if (!selected.length) {
+          tripPlacesHint.textContent = `Select at least one destination in ${stateDef.label}.`;
+        } else {
+          const totalPlaces = selected.reduce((sum, id) => sum + (stateDef.destinations[id]?.placesCount || 0), 0);
+          const days = Math.max(1, parseInt(tripDurationInput?.value || '3', 10) || 3);
+          tripPlacesHint.textContent = totalPlaces < days
+            ? `${selected.length} destination(s) selected (${totalPlaces} curated stops). Extra days will be marked as Open Exploration days so you can add custom stops.`
+            : `${selected.length} destination(s) selected in ${stateDef.label} (${totalPlaces} curated reference stops available).`;
+        }
+      }
+    }
+
+    function renderStateDestinationChips(stateKey, preselectIds = null) {
+      if (!tripPlacesGroup) return;
+      const stateDef = FLEX_STATE_CATALOG[stateKey] || FLEX_STATE_CATALOG.rajasthan;
+      const entries = Object.entries(stateDef.destinations);
+      const selectedSet = new Set(Array.isArray(preselectIds) && preselectIds.length ? preselectIds : [entries[0][0]]);
+      tripPlacesGroup.innerHTML = entries.map(([id, def]) => {
+        const active = selectedSet.has(id);
+        return `<button type="button" class="explore-vibe-chip${active ? ' active' : ''}" data-place-id="${id}" aria-pressed="${active ? 'true' : 'false'}">${def.label}</button>`;
+      }).join('');
+      tripPlacesGroup.querySelectorAll('.explore-vibe-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const next = !btn.classList.contains('active');
+          btn.classList.toggle('active', next);
+          btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+          syncDestinationSummary();
+        });
+      });
+      syncDestinationSummary();
+    }
+
+    if (tripStateSelect) {
+      renderStateDestinationChips(tripStateSelect.value || 'rajasthan');
+      tripStateSelect.addEventListener('change', () => {
+        renderStateDestinationChips(tripStateSelect.value);
+      });
+    }
+
+    function syncEndDateFromDuration() {
+      if (!tripStartInput || !tripEndInput || !tripDurationInput || !tripStartInput.value) return;
+      const days = Math.max(1, Math.min(30, parseInt(tripDurationInput.value, 10) || 3));
+      const d = new Date(tripStartInput.value + 'T00:00:00');
+      if (!Number.isNaN(d.getTime())) {
+        d.setDate(d.getDate() + (days - 1));
+        tripEndInput.value = d.toISOString().split('T')[0];
+      }
+    }
+    if (tripStartInput) tripStartInput.addEventListener('change', syncEndDateFromDuration);
+    if (tripDurationInput) tripDurationInput.addEventListener('input', () => { syncEndDateFromDuration(); syncDestinationSummary(); });
+
     const formCreateTrip = document.getElementById('form-create-trip');
     if (formCreateTrip) {
       formCreateTrip.addEventListener('submit', async function (e) {
@@ -493,11 +833,24 @@
         const editIdEl = document.getElementById('trip-edit-id');
         const editId = editIdEl ? editIdEl.value.trim() : '';
         const name = document.getElementById('new-trip-name').value.trim();
-        const dest = document.getElementById('new-trip-destination').value.trim();
+        const stateKey = tripStateSelect ? tripStateSelect.value : 'rajasthan';
+        const selectedPlaces = getSelectedPlaceIds();
+        const dest = (tripDestHidden && tripDestHidden.value.trim()) || '';
+        const durationDays = Math.max(1, Math.min(30, parseInt(tripDurationInput?.value || '3', 10) || 3));
         const budget = parseInt(document.getElementById('new-trip-budget').value, 10) || 35000;
         const travelers = parseInt(document.getElementById('new-trip-travelers').value, 10) || 2;
-        const start = document.getElementById('new-trip-start').value || '2027-02-10';
-        const end = document.getElementById('new-trip-end').value || '2027-02-15';
+        const start = (tripStartInput && tripStartInput.value) || '2027-02-10';
+        const end = (tripEndInput && tripEndInput.value) || start;
+        const generateItinerary = Boolean(document.getElementById('new-trip-generate-itinerary')?.checked);
+
+        if (!name) {
+          showToast('Please enter a trip name.');
+          return;
+        }
+        if (!selectedPlaces.length) {
+          showToast(`Select at least one destination in ${(FLEX_STATE_CATALOG[stateKey] || {}).label || 'the selected state'}.`);
+          return;
+        }
 
         if (editId) {
           const existing = state.trips.find(t => t.id === editId);
@@ -506,7 +859,7 @@
               try {
                 await apiFetch(`/api/workspace/trips/${encodeURIComponent(editId)}`, {
                   method: 'PATCH',
-                  body: JSON.stringify({ name, destination: dest, budgetPaise: budget * 100, travelers, startDate: start, endDate: end })
+                  body: JSON.stringify({ name, destination: dest, theme: stateKey, selectedPlaces, budgetPaise: budget * 100, travelers, startDate: start, endDate: end })
                 });
               } catch (err) {
                 showToast(err.message || 'Could not update trip in D1.');
@@ -515,6 +868,8 @@
             }
             existing.name = name || existing.name;
             existing.destination = dest || existing.destination;
+            existing.theme = stateKey;
+            existing.selectedPlaces = selectedPlaces;
             existing.budget = budget;
             existing.travelers = travelers;
             existing.startDate = start;
@@ -530,6 +885,7 @@
         }
 
         let newTripObj;
+        let createdItems = [];
         if (state.isAuthenticated) {
           try {
             const res = await apiFetch('/api/workspace/trips', {
@@ -541,10 +897,14 @@
                 endDate: end,
                 travelers,
                 budgetPaise: budget * 100,
-                theme: 'rajasthan'
+                theme: stateKey,
+                selectedPlaces,
+                durationDays,
+                generateItinerary
               })
             });
             newTripObj = res.trip;
+            createdItems = Array.isArray(res.itineraryItems) ? res.itineraryItems : [];
           } catch (err) {
             showToast(err.message || 'Could not create trip in D1.');
             return;
@@ -560,13 +920,17 @@
             budget: budget,
             spent: 0,
             estimated: 0,
-            theme: 'rajasthan',
+            theme: stateKey,
+            selectedPlaces,
             role: 'Owner'
           };
         }
         const newId = newTripObj.id;
 
         state.trips.unshift(newTripObj);
+        if (createdItems.length > 0) {
+          state.itineraryItems.push(...createdItems);
+        }
 
         // Append card to My Trips container
         const tripsContainer = document.getElementById('trips-container');
@@ -889,7 +1253,7 @@
           }
         };
         try {
-          localStorage.setItem(`yatrasathi_offline_${state.activeTripId}`, JSON.stringify(snapshot));
+          localStorage.setItem(scopedStorageKey(`offline_${state.activeTripId}`), JSON.stringify(snapshot));
           const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           if (offlineSyncStatus) {
             offlineSyncStatus.innerHTML = `<strong>Sync Status:</strong> Saved offline at ${time} • Cached read-only snapshot.`;
@@ -906,8 +1270,9 @@
     if (btnClearCache) {
       btnClearCache.addEventListener('click', function () {
         let cleared = 0;
+        const offlinePrefix = scopedStoragePrefix('offline_');
         Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('yatrasathi_offline_')) {
+          if (key.startsWith(offlinePrefix)) {
             localStorage.removeItem(key);
             cleared++;
           }
@@ -919,16 +1284,12 @@
       });
     }
 
-    // Sign out (clears offline data and redirects to index.html)
+    // Sign out (clears offline and user-scoped cached data and redirects to index.html)
     const btnSignOut = document.getElementById('btn-sign-out');
     if (btnSignOut) {
       btnSignOut.addEventListener('click', async function () {
         if (confirm('Sign out of YatraSathi? Cached offline snapshots will be cleared for your privacy.')) {
-          Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('yatrasathi_offline_')) {
-              localStorage.removeItem(key);
-            }
-          });
+          clearAllUserStorage();
           try {
             await fetch(getApiBase() + '/api/auth/sign-out', {
               method: 'POST',
@@ -993,8 +1354,12 @@
     if (btnRetryError) {
       btnRetryError.addEventListener('click', function () {
         if (simulatedErrorBanner) simulatedErrorBanner.style.display = 'none';
-        if (stateSelect) stateSelect.value = 'normal';
-        showToast('Retry successful!');
+        if (stateSelect && stateSelect.value === 'error') {
+          stateSelect.value = 'normal';
+          showToast('Retry successful!');
+          return;
+        }
+        initWorkerSessionBridge();
       });
     }
   }
@@ -1004,7 +1369,9 @@
     if (!payload || !payload.ok) return;
     state.dataSourceLabel = 'Cloudflare D1';
 
-      if (payload.user) {
+    if (payload.user) {
+      state.userId = payload.user.id || null;
+      clearLegacyUnscopedStorage();
       state.userDisplayName = payload.user.name || payload.user.email || state.userDisplayName;
       state.userEmail = payload.user.email || '';
       state.userEmailVerified = Boolean(payload.user.emailVerified);
@@ -1064,32 +1431,11 @@
     state.activeTripId = state.trips[0] ? state.trips[0].id : null;
     state.itineraryItems = Array.isArray(payload.itineraryItems) ? payload.itineraryItems : [];
     state.bookingNotes = Array.isArray(payload.bookingNotes) ? payload.bookingNotes : [];
+    state.reviews = Array.isArray(payload.reviews) ? payload.reviews : [];
+    state.unlockedBadges = new Set(Array.isArray(payload.achievements) ? payload.achievements : []);
     state.recentActivity = Array.isArray(payload.recentActivity) ? payload.recentActivity : [];
 
-    const activitiesContainer = document.getElementById('activities-container');
-    if (activitiesContainer) {
-      const activeItems = state.itineraryItems.filter(it => it.tripId === state.activeTripId);
-      activitiesContainer.innerHTML = activeItems.length
-        ? activeItems.map(it => `
-          <article class="activity-card" data-item-id="${it.id}">
-            <div class="activity-time-col">
-              <span class="activity-time">${it.timeLabel}</span>
-              <span class="activity-duration">${it.durationLabel}</span>
-            </div>
-            <div class="activity-body">
-              <h4 class="activity-title">${it.title}</h4>
-              <div class="activity-location"><span>${it.location || 'Local Area'}</span></div>
-              ${it.notes ? `<p class="activity-notes">${it.notes}</p>` : ''}
-            </div>
-            <div class="activity-cost-col">
-              <span class="cost-estimate-label">Estimated Cost</span>
-              <span class="cost-estimate-val">₹${Math.round((it.estimatedCostPaise || 0) / 100).toLocaleString('en-IN')}</span>
-              <button class="btn-delete-item" type="button" title="Delete activity" aria-label="Delete activity">×</button>
-            </div>
-          </article>
-        `).join('')
-        : '<div class="empty-state-card" style="padding: var(--space-lg);"><h3 class="empty-state-title">No itinerary items yet</h3><p class="empty-state-desc">Add an activity or choose a curated stop to build your day plan.</p></div>';
-    }
+    renderActiveTripItineraryList(state.activeTripId);
 
     const bookingsContainer = document.getElementById('bookings-container');
     if (bookingsContainer) {
@@ -1119,6 +1465,7 @@
     if (typeof window.__yatraRenderMyTrips === 'function') window.__yatraRenderMyTrips();
     if (typeof window.__yatraRenderDashboard === 'function') window.__yatraRenderDashboard();
     if (typeof window.__yatraRenderAchievements === 'function') window.__yatraRenderAchievements();
+    if (typeof window.__yatraRenderReviews === 'function') window.__yatraRenderReviews();
   }
 
   function initWorkerSessionBridge() {
@@ -1143,21 +1490,42 @@
           }
           return apiFetch('/api/workspace/bootstrap')
             .then(hydrateAuthenticatedWorkspace)
-            .catch(() => {
+            .catch((err) => {
               const errBanner = document.getElementById('simulated-error-banner');
+              const errText = document.getElementById('error-banner-text');
+              if (errText) {
+                if (err && err.status === 401) {
+                  errText.innerHTML = '<strong>Session Expired:</strong> Please sign in again to load your private D1 trips.';
+                } else if (err && err.status === 403) {
+                  errText.innerHTML = '<strong>Access Denied (403):</strong> You do not have permission for this trip.';
+                } else if (err && err.status >= 500) {
+                  errText.innerHTML = `<strong>Server / D1 Error (${err.status}):</strong> Could not query D1 workspace tables. Local data was preserved.`;
+                } else {
+                  errText.innerHTML = '<strong>Synchronization Failed:</strong> Network error while loading D1 workspace. Local data was preserved.';
+                }
+              }
               if (errBanner) errBanner.style.display = 'flex';
               showToast('Could not load saved D1 workspace data.');
             });
         } else {
           state.isAuthenticated = false;
+          state.userId = null;
+          state.trips = [];
+          state.activeTripId = null;
+          state.itineraryItems = [];
+          state.bookingNotes = [];
+          state.savedDestinations = new Set();
+          state.unlockedBadges = new Set();
+          state.recentActivity = [];
           if (backendStatusTag) {
             backendStatusTag.textContent = 'Sign-In Required';
             backendStatusTag.style.background = 'var(--color-brand-saffron)';
             backendStatusTag.style.color = 'var(--color-brand-ink)';
           }
           if (backendStatusDesc) {
-            backendStatusDesc.textContent = 'No active Better Auth session. Sign in via index.html for protected API actions.';
+            backendStatusDesc.textContent = 'No active Better Auth session. Redirecting to sign in...';
           }
+          window.location.replace('/index.html?auth=required');
         }
       })
       .catch(() => {
@@ -1173,8 +1541,8 @@
     const compareGridEl = document.getElementById('route-compare-grid');
     const customisePanelEl = document.getElementById('customise-builder-panel');
     const modeButtons = document.querySelectorAll('.planning-mode-btn');
-    const routeSvgLine = document.getElementById('itinerary-route-line');
-    const markersLayer = document.getElementById('itinerary-map-markers');
+    const mapEl = document.getElementById('itinerary-leaflet-map');
+    const mapFallbackEl = document.getElementById('itinerary-map-fallback');
     const mapBadgeEl = document.getElementById('itinerary-map-badge');
     const detailOrderEl = document.getElementById('place-detail-order');
     const detailTimeEl = document.getElementById('place-detail-time');
@@ -1187,16 +1555,16 @@
     const formCustomPlace = document.getElementById('form-customise-place');
     const btnSaveCustomise = document.getElementById('btn-save-customise-route');
 
-    if (!optionsListEl || !compareGridEl || !markersLayer) return;
+    if (!optionsListEl || !compareGridEl) return;
 
     const DEST_CATALOG = {
       rajasthan: {
         places: [
-          { id: 'raj-1', name: 'Heritage Haveli (Bani Park)', visitTime: '09:30 AM – 10:15 AM', durationMins: 45, location: 'Bani Park, Jaipur', estCost: 0, notes: 'Base check-in & morning chai.', x: 110, y: 195 },
-          { id: 'raj-2', name: 'City Palace & Jantar Mantar', visitTime: '10:45 AM – 01:15 PM', durationMins: 150, location: 'Old City, Pink City', estCost: 1200, notes: 'Composite ticket includes observatory.', x: 285, y: 150 },
-          { id: 'raj-3', name: 'Hawa Mahal & Bapu Bazaar', visitTime: '02:00 PM – 03:45 PM', durationMins: 105, location: 'Sireh Deori, Jaipur', estCost: 450, notes: 'Iconic facade & local craft lanes.', x: 380, y: 215 },
-          { id: 'raj-4', name: 'Nahargarh Fort Sunset', visitTime: '04:30 PM – 06:30 PM', durationMins: 120, location: 'Aravalli Hills, Jaipur', estCost: 350, notes: 'Panoramic twilight city views.', x: 495, y: 95 },
-          { id: 'raj-5', name: 'Amer Fort & Stepwell', visitTime: '09:00 AM – 11:30 AM', durationMins: 150, location: 'Amer, Jaipur', estCost: 800, notes: 'Hilltop palace & Panna Meena Kund.', x: 215, y: 75 }
+          { id: 'raj-1', name: 'Heritage Haveli (Bani Park)', visitTime: '09:30 AM – 10:15 AM', durationMins: 45, location: 'Bani Park, Jaipur', estCost: 0, notes: 'Base check-in & morning chai.', lat: 26.9260, lng: 75.7920 },
+          { id: 'raj-2', name: 'City Palace & Jantar Mantar', visitTime: '10:45 AM – 01:15 PM', durationMins: 150, location: 'Old City, Pink City', estCost: 1200, notes: 'Composite ticket includes observatory.', lat: 26.9258, lng: 75.8237 },
+          { id: 'raj-3', name: 'Hawa Mahal & Bapu Bazaar', visitTime: '02:00 PM – 03:45 PM', durationMins: 105, location: 'Sireh Deori, Jaipur', estCost: 450, notes: 'Iconic facade & local craft lanes.', lat: 26.9239, lng: 75.8267 },
+          { id: 'raj-4', name: 'Nahargarh Fort Sunset', visitTime: '04:30 PM – 06:30 PM', durationMins: 120, location: 'Aravalli Hills, Jaipur', estCost: 350, notes: 'Panoramic twilight city views.', lat: 26.9373, lng: 75.8155 },
+          { id: 'raj-5', name: 'Amer Fort & Stepwell', visitTime: '09:00 AM – 11:30 AM', durationMins: 150, location: 'Amer, Jaipur', estCost: 800, notes: 'Hilltop palace & Panna Meena Kund.', lat: 26.9855, lng: 75.8513 }
         ],
         ai: [
           {
@@ -1262,10 +1630,10 @@
       },
       kerala: {
         places: [
-          { id: 'ker-1', name: 'Munnar Tea Museum', visitTime: '09:30 AM – 11:00 AM', durationMins: 90, location: 'Nallathanni, Munnar', estCost: 300, notes: 'Heritage tea processing tour.', x: 120, y: 120 },
-          { id: 'ker-2', name: 'Mattupetty Dam & Echo Point', visitTime: '11:30 AM – 01:30 PM', durationMins: 120, location: 'Mattupetty, Munnar', estCost: 200, notes: 'Lakeside hills & boating.', x: 300, y: 95 },
-          { id: 'ker-3', name: 'Top Station Mist Viewpoint', visitTime: '02:30 PM – 04:00 PM', durationMins: 90, location: 'Munnar Border', estCost: 150, notes: 'Western Ghats valley views.', x: 485, y: 135 },
-          { id: 'ker-4', name: 'Spice Garden Trail', visitTime: '04:45 PM – 06:00 PM', durationMins: 75, location: 'Chithirapuram', estCost: 400, notes: 'Cardamom & pepper walk.', x: 250, y: 235 }
+          { id: 'ker-1', name: 'Munnar Tea Museum', visitTime: '09:30 AM – 11:00 AM', durationMins: 90, location: 'Nallathanni, Munnar', estCost: 300, notes: 'Heritage tea processing tour.', lat: 10.0977, lng: 77.0531 },
+          { id: 'ker-2', name: 'Mattupetty Dam & Echo Point', visitTime: '11:30 AM – 01:30 PM', durationMins: 120, location: 'Mattupetty, Munnar', estCost: 200, notes: 'Lakeside hills & boating.', lat: 10.1066, lng: 77.1235 },
+          { id: 'ker-3', name: 'Top Station Mist Viewpoint', visitTime: '02:30 PM – 04:00 PM', durationMins: 90, location: 'Munnar Border', estCost: 150, notes: 'Western Ghats valley views.', lat: 10.1259, lng: 77.2454 },
+          { id: 'ker-4', name: 'Spice Garden Trail', visitTime: '04:45 PM – 06:00 PM', durationMins: 75, location: 'Chithirapuram', estCost: 400, notes: 'Cardamom & pepper walk.', lat: 10.0566, lng: 77.0419 }
         ],
         ai: [
           {
@@ -1381,47 +1749,30 @@
 
     function renderMap() {
       const stops = getActiveStopsForMap();
-      markersLayer.innerHTML = '';
 
       if (!stops.length) {
-        if (routeSvgLine) routeSvgLine.setAttribute('d', '');
         updatePlaceDetail(null, 0);
         return;
-      }
-
-      const points = stops.map(s => `${s.x},${s.y}`);
-      if (routeSvgLine) {
-        const pathD = stops.map((s, idx) => `${idx === 0 ? 'M' : 'L'}${s.x} ${s.y}`).join(' ');
-        routeSvgLine.setAttribute('d', pathD);
       }
 
       if (plannerState.selectedStopIndex >= stops.length) {
         plannerState.selectedStopIndex = 0;
       }
 
-      stops.forEach((stop, idx) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `map-marker-btn${idx === plannerState.selectedStopIndex ? ' active' : ''}`;
-        btn.style.left = `${(stop.x / 600) * 100}%`;
-        btn.style.top = `${(stop.y / 320) * 100}%`;
-        btn.setAttribute('aria-label', `Stop ${idx + 1}: ${stop.name}`);
-        btn.innerHTML = `<span>${idx + 1}</span><span>${stop.name.split(' ')[0]}</span>`;
-        btn.addEventListener('click', function () {
-          plannerState.selectedStopIndex = idx;
-          renderMap();
-        });
-        markersLayer.appendChild(btn);
-      });
-
-      if (mapBadgeEl) {
-        const label = plannerState.mode === 'customise'
-          ? `Customised Route (${stops.length} stops) • Estimates Only`
-          : `Linked Route Preview • Estimates Only`;
-        mapBadgeEl.textContent = label;
-      }
-
       updatePlaceDetail(stops[plannerState.selectedStopIndex], plannerState.selectedStopIndex);
+
+      renderLeafletMap({
+        mapEl,
+        fallbackEl: mapFallbackEl,
+        badgeEl: mapBadgeEl,
+        stops,
+        focusedIndex: plannerState.selectedStopIndex,
+        onMarkerSelect: (idx) => {
+          plannerState.selectedStopIndex = idx;
+          updatePlaceDetail(stops[idx], idx);
+          renderMap();
+        }
+      });
     }
 
     function applyStopsToDayItinerary(stops, routeLabel) {
@@ -1465,7 +1816,7 @@
       }
 
       try {
-        localStorage.setItem(`yatrasathi_route_${state.activeTripId}`, JSON.stringify({
+        localStorage.setItem(scopedStorageKey(`route_${state.activeTripId}`), JSON.stringify({
           routeLabel: routeLabel,
           stops: stops.map(s => s.name),
           savedAt: new Date().toISOString()
@@ -1524,7 +1875,8 @@
         card.querySelector('.btn-select-route').addEventListener('click', function () {
           plannerState.selectedOptionId = opt.id;
           plannerState.selectedStopIndex = 0;
-          renderOptionsAndComparison();
+          window.__yatraRenderItineraryMap = renderMap;
+    renderOptionsAndComparison();
           renderMap();
         });
         optionsListEl.appendChild(card);
@@ -1548,7 +1900,8 @@
         comp.querySelector('.btn-save-compared').addEventListener('click', function () {
           plannerState.selectedOptionId = opt.id;
           plannerState.selectedStopIndex = 0;
-          renderOptionsAndComparison();
+          window.__yatraRenderItineraryMap = renderMap;
+    renderOptionsAndComparison();
           renderMap();
           applyStopsToDayItinerary(resolvedStops, opt.title);
         });
@@ -1638,7 +1991,8 @@
         optionsListEl.hidden = false;
         optionsListEl.style.display = 'flex';
         if (customisePanelEl) customisePanelEl.hidden = true;
-        renderOptionsAndComparison();
+        window.__yatraRenderItineraryMap = renderMap;
+    renderOptionsAndComparison();
       }
 
       renderMap();
@@ -1762,8 +2116,8 @@
       let score = 25; // Base trip created
       if (trip.startDate && trip.endDate) score += 25;
       if (trip.budget && trip.budget > 0) score += 25;
-      const hasSavedRoute = Boolean(localStorage.getItem(`yatrasathi_route_${trip.id}`));
-      const hasOffline = Boolean(localStorage.getItem(`yatrasathi_offline_${trip.id}`));
+      const hasSavedRoute = Boolean(localStorage.getItem(scopedStorageKey(`route_${trip.id}`)));
+      const hasOffline = Boolean(localStorage.getItem(scopedStorageKey(`offline_${trip.id}`)));
       if (hasSavedRoute || trip.id === 'trip-1') score += 15;
       if (hasOffline) score += 10;
       return Math.min(100, score);
@@ -2567,8 +2921,8 @@
       let score = 25;
       if (trip.startDate && trip.endDate) score += 25;
       if (trip.budget && trip.budget > 0) score += 25;
-      if (localStorage.getItem(`yatrasathi_route_${trip.id}`) || trip.id === 'trip-1') score += 15;
-      if (localStorage.getItem(`yatrasathi_offline_${trip.id}`)) score += 10;
+      if (localStorage.getItem(scopedStorageKey(`route_${trip.id}`)) || (!state.isAuthenticated && trip.id === 'trip-1')) score += 15;
+      if (localStorage.getItem(scopedStorageKey(`offline_${trip.id}`))) score += 10;
       return Math.min(100, score);
     }
 
@@ -2853,9 +3207,9 @@
     const scopeButtons = document.querySelectorAll('[data-maps-scope]');
     const daySelectorEl = document.getElementById('maps-day-selector');
     const dayButtons = document.querySelectorAll('[data-maps-day]');
-    const lineActiveEl = document.getElementById('maps-route-line-active');
-    const lineAltEl = document.getElementById('maps-route-line-alt');
-    const markersLayerEl = document.getElementById('maps-markers-layer');
+    const mapEl = document.getElementById('maps-leaflet-map');
+    const fallbackOverlayEl = document.getElementById('maps-fallback-overlay');
+    const badgeEl = document.getElementById('maps-fallback-badge');
     const stopListEl = document.getElementById('maps-stop-list');
     const seqHeadingEl = document.getElementById('maps-sequence-heading');
     const seqTotalsEl = document.getElementById('maps-sequence-totals');
@@ -2866,7 +3220,7 @@
     const detailDescEl = document.getElementById('maps-detail-desc');
     const tripNameEl = document.getElementById('maps-active-trip-name');
 
-    if (!markersLayerEl || !stopListEl || !compareGridEl) return;
+    if (!stopListEl || !compareGridEl) return;
 
     const DAY_ROUTES = {
       'day-1': {
@@ -2880,9 +3234,9 @@
             totalMin: 55,
             note: 'Passes Old City bazaars & Aravalli ridge',
             stops: [
-              { name: 'Heritage Haveli (Bani Park)', time: '09:30 AM', leg: 'Start point', notes: 'Check-in & morning logistics', x: 105, y: 185 },
-              { name: 'City Palace & Jantar Mantar', time: '11:00 AM', leg: '4 km • ~15 min (est.)', notes: 'Composite heritage ticket', x: 290, y: 130 },
-              { name: 'Nahargarh Fort Sunset Point', time: '05:00 PM', leg: '14 km • ~40 min (est.)', notes: 'Hill road approach for sunset', x: 495, y: 105 }
+              { name: 'Heritage Haveli (Bani Park)', time: '09:30 AM', leg: 'Start point', notes: 'Check-in & morning logistics', lat: 26.9260, lng: 75.7920 },
+              { name: 'City Palace & Jantar Mantar', time: '11:00 AM', leg: 'Estimated stop leg', notes: 'Composite heritage ticket', lat: 26.9258, lng: 75.8237 },
+              { name: 'Nahargarh Fort Sunset Point', time: '05:00 PM', leg: 'Estimated stop leg', notes: 'Hill road approach for sunset', lat: 26.9373, lng: 75.8155 }
             ]
           },
           {
@@ -2893,9 +3247,9 @@
             totalMin: 38,
             note: 'Direct arterial road, skips bazaar detour',
             stops: [
-              { name: 'Heritage Haveli (Bani Park)', time: '09:30 AM', leg: 'Start point', notes: 'Check-in & morning logistics', x: 105, y: 185 },
-              { name: 'Hawa Mahal Gate', time: '10:30 AM', leg: '4 km • ~14 min (est.)', notes: 'Quick photo stop', x: 325, y: 215 },
-              { name: 'Nahargarh Fort Sunset Point', time: '04:30 PM', leg: '9 km • ~24 min (est.)', notes: 'Direct hill road ascent', x: 495, y: 105 }
+              { name: 'Heritage Haveli (Bani Park)', time: '09:30 AM', leg: 'Start point', notes: 'Check-in & morning logistics', lat: 26.9260, lng: 75.7920 },
+              { name: 'Hawa Mahal Gate', time: '10:30 AM', leg: 'Estimated stop leg', notes: 'Quick photo stop', lat: 26.9239, lng: 75.8267 },
+              { name: 'Nahargarh Fort Sunset Point', time: '04:30 PM', leg: 'Estimated stop leg', notes: 'Direct hill road ascent', lat: 26.9373, lng: 75.8155 }
             ]
           }
         ]
@@ -2911,9 +3265,9 @@
             totalMin: 42,
             note: 'Lakeside road past Jal Mahal',
             stops: [
-              { name: 'Amer Fort & Stepwell', time: '09:00 AM', leg: 'Start point', notes: 'Morning palace walk', x: 150, y: 95 },
-              { name: 'Jal Mahal Promenade', time: '12:30 PM', leg: '5 km • ~14 min (est.)', notes: 'Man Sagar lake viewpoint', x: 315, y: 150 },
-              { name: 'Johari Bazaar Craft Walk', time: '03:30 PM', leg: '11 km • ~28 min (est.)', notes: 'Local textiles & dinner', x: 465, y: 225 }
+              { name: 'Amer Fort & Stepwell', time: '09:00 AM', leg: 'Start point', notes: 'Morning palace walk', lat: 26.9855, lng: 75.8513 },
+              { name: 'Jal Mahal Promenade', time: '12:30 PM', leg: 'Estimated stop leg', notes: 'Man Sagar lake viewpoint', lat: 26.9535, lng: 75.8461 },
+              { name: 'Johari Bazaar Craft Walk', time: '03:30 PM', leg: 'Estimated stop leg', notes: 'Local textiles & dinner', lat: 26.9196, lng: 75.8266 }
             ]
           },
           {
@@ -2924,8 +3278,8 @@
             totalMin: 32,
             note: 'Two-stop express morning',
             stops: [
-              { name: 'Amer Fort & Stepwell', time: '09:00 AM', leg: 'Start point', notes: 'Morning palace walk', x: 150, y: 95 },
-              { name: 'Johari Bazaar Craft Walk', time: '01:00 PM', leg: '12 km • ~32 min (est.)', notes: 'Direct return to Old City', x: 465, y: 225 }
+              { name: 'Amer Fort & Stepwell', time: '09:00 AM', leg: 'Start point', notes: 'Morning palace walk', lat: 26.9855, lng: 75.8513 },
+              { name: 'Johari Bazaar Craft Walk', time: '01:00 PM', leg: 'Estimated stop leg', notes: 'Direct return to Old City', lat: 26.9196, lng: 75.8266 }
             ]
           }
         ]
@@ -2941,9 +3295,9 @@
             totalMin: 320,
             note: 'NH62/NH25 intercity highway (est.)',
             stops: [
-              { name: 'Jaipur Junction / Hotel', time: '08:00 AM', leg: 'Start point', notes: 'Morning departure', x: 110, y: 155 },
-              { name: 'Ajmer Highway Stop', time: '10:30 AM', leg: '135 km • ~130 min (est.)', notes: 'Tea & refreshment break', x: 300, y: 175 },
-              { name: 'Mehrangarh & Blue City', time: '02:30 PM', leg: '200 km • ~190 min (est.)', notes: 'Arrival in Jodhpur', x: 500, y: 145 }
+              { name: 'Jaipur Junction / Hotel', time: '08:00 AM', leg: 'Start point', notes: 'Morning departure', lat: 26.9196, lng: 75.7878 },
+              { name: 'Ajmer Highway Stop', time: '10:30 AM', leg: 'Estimated stop leg', notes: 'Tea & refreshment break', lat: 26.4499, lng: 74.6399 },
+              { name: 'Mehrangarh & Blue City', time: '02:30 PM', leg: 'Estimated stop leg', notes: 'Arrival in Jodhpur', lat: 26.2981, lng: 73.0186 }
             ]
           }
         ]
@@ -3001,31 +3355,20 @@
       if (mapsState.focusedStopIndex >= stops.length) mapsState.focusedStopIndex = 0;
 
       if (seqHeadingEl) seqHeadingEl.textContent = heading;
-      if (seqTotalsEl) seqTotalsEl.textContent = `Est. ${activeOption.totalKm} km • ~${activeOption.totalMin} min`;
+      if (seqTotalsEl) seqTotalsEl.textContent = 'Awaiting Google Routes API estimate';
 
-      // SVG Lines
-      if (lineActiveEl) {
-        lineActiveEl.setAttribute('d', stops.map((s, i) => `${i === 0 ? 'M' : 'L'}${s.x} ${s.y}`).join(' '));
-      }
-      if (lineAltEl) {
-        lineAltEl.setAttribute('d', altOption ? altOption.stops.map((s, i) => `${i === 0 ? 'M' : 'L'}${s.x} ${s.y}`).join(' ') : '');
-      }
-
-      // Map Markers
-      markersLayerEl.innerHTML = '';
-      stops.forEach((stop, idx) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `map-marker-btn${idx === mapsState.focusedStopIndex ? ' active' : ''}`;
-        btn.style.left = `${(stop.x / 600) * 100}%`;
-        btn.style.top = `${(stop.y / 320) * 100}%`;
-        btn.setAttribute('aria-label', `Stop ${idx + 1}: ${stop.name}`);
-        btn.innerHTML = `<span>${idx + 1}</span><span>${stop.name.split(' ')[0]}</span>`;
-        btn.addEventListener('click', function () {
+      renderLeafletMap({
+        mapEl,
+        fallbackEl: fallbackOverlayEl,
+        badgeEl,
+        stops,
+        focusedIndex: mapsState.focusedStopIndex,
+        totalsEl: seqTotalsEl,
+        onMarkerSelect: (idx) => {
           mapsState.focusedStopIndex = idx;
-          renderMapsSection();
-        });
-        markersLayerEl.appendChild(btn);
+          window.__yatraRenderMapsSection = renderMapsSection;
+    renderMapsSection();
+        }
       });
 
       // Detail Card
@@ -3040,6 +3383,7 @@
       // Stop List (clicking focuses map marker)
       stopListEl.innerHTML = '';
       stops.forEach((stop, idx) => {
+        const hasCoords = Number.isFinite(stop.lat) && Number.isFinite(stop.lng);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `location-item-btn${idx === mapsState.focusedStopIndex ? ' active' : ''}`;
@@ -3047,12 +3391,13 @@
           <div class="location-number">${idx + 1}</div>
           <div>
             <strong style="display: block; font-size: 0.9375rem;">${stop.name}</strong>
-            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">${stop.time} • ${stop.leg}</div>
+            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">${stop.time} • ${stop.leg}${hasCoords ? '' : ' • No coordinates (cannot be pinned yet)'}</div>
           </div>
         `;
         btn.addEventListener('click', function () {
           mapsState.focusedStopIndex = idx;
-          renderMapsSection();
+          window.__yatraRenderMapsSection = renderMapsSection;
+    renderMapsSection();
         });
         stopListEl.appendChild(btn);
       });
@@ -3077,7 +3422,8 @@
         card.querySelector('button').addEventListener('click', function () {
           mapsState.selectedRouteId = opt.id;
           mapsState.focusedStopIndex = 0;
-          renderMapsSection();
+          window.__yatraRenderMapsSection = renderMapsSection;
+    renderMapsSection();
           showToast(`Selected "${opt.name}" (Est. ${opt.totalKm} km).`);
         });
         compareGridEl.appendChild(card);
@@ -3094,7 +3440,8 @@
           b.setAttribute('aria-selected', active ? 'true' : 'false');
         });
         if (daySelectorEl) daySelectorEl.style.display = mapsState.scope === 'day' ? 'flex' : 'none';
-        renderMapsSection();
+        window.__yatraRenderMapsSection = renderMapsSection;
+    renderMapsSection();
       });
     });
 
@@ -3108,10 +3455,12 @@
           b.classList.toggle('active', active);
           b.setAttribute('aria-selected', active ? 'true' : 'false');
         });
-        renderMapsSection();
+        window.__yatraRenderMapsSection = renderMapsSection;
+    renderMapsSection();
       });
     });
 
+    window.__yatraRenderMapsSection = renderMapsSection;
     window.__yatraRenderMapsSection = renderMapsSection;
     renderMapsSection();
   }
@@ -3841,6 +4190,7 @@
       {
         id: 'first-blueprint',
         name: 'First Blueprint',
+        description: 'Started your first structured trip plan in YatraSathi.',
         xp: 100,
         how: 'Create at least 1 trip blueprint.',
         check: ctx => ctx.tripsCount >= 1
@@ -3848,6 +4198,7 @@
       {
         id: 'budget-architect',
         name: 'Budget Architect',
+        description: 'Established a dedicated INR spending target for a trip.',
         xp: 100,
         how: 'Set an INR trip budget above ₹0.',
         check: ctx => ctx.hasBudget
@@ -3855,6 +4206,7 @@
       {
         id: 'route-scout',
         name: 'Route Scout',
+        description: 'Mapped out a multi-stop day-by-day itinerary.',
         xp: 150,
         how: 'Plot 3 or more activities in your itinerary.',
         check: ctx => ctx.activitiesCount >= 3
@@ -3862,6 +4214,7 @@
       {
         id: 'vault-keeper',
         name: 'Vault Keeper',
+        description: 'Stored a personal booking reference in your private vault.',
         xp: 100,
         how: 'Save at least 1 personal booking reference note.',
         check: ctx => ctx.bookingsCount >= 1
@@ -3869,13 +4222,23 @@
       {
         id: 'expense-tracker',
         name: 'Expense Tracker',
+        description: 'Logged actual trip spending separately from estimates.',
         xp: 150,
         how: 'Record at least 1 actual expense in INR.',
         check: ctx => ctx.expensesCount >= 1
       },
       {
+        id: 'destination-explorer',
+        name: 'Destination Explorer',
+        description: 'Shortlisted curated Indian destinations for future trips.',
+        xp: 100,
+        how: 'Save at least 2 Indian destinations in Explore India.',
+        check: ctx => ctx.savedDestCount >= 2
+      },
+      {
         id: 'offline-ready',
         name: 'Offline Ready',
+        description: 'Prepared a read-only trip snapshot on this device.',
         xp: 100,
         how: 'Save a trip snapshot for read-only offline viewing.',
         check: ctx => ctx.hasOffline
@@ -3883,17 +4246,35 @@
     ];
 
     function getPersistedUnlocked() {
+      if (state.isAuthenticated) {
+        return new Set(state.unlockedBadges || []);
+      }
       try {
-        const raw = localStorage.getItem('yatrasathi_unlocked_badges');
+        const raw = localStorage.getItem(scopedStorageKey('unlocked_badges'));
         return raw ? new Set(JSON.parse(raw)) : new Set();
       } catch (e) {
         return new Set();
       }
     }
 
-    function savePersistedUnlocked(setObj) {
+    function savePersistedUnlocked(setObj, newlyUnlocked) {
+      if (state.isAuthenticated) {
+        if (newlyUnlocked) {
+          apiFetch('/api/workspace/achievements/sync', {
+            method: 'POST',
+            body: '{}'
+          })
+            .then(res => {
+              if (res && Array.isArray(res.achievements)) {
+                state.unlockedBadges = new Set(res.achievements);
+              }
+            })
+            .catch(() => {});
+        }
+        return;
+      }
       try {
-        localStorage.setItem('yatrasathi_unlocked_badges', JSON.stringify(Array.from(setObj)));
+        localStorage.setItem(scopedStorageKey('unlocked_badges'), JSON.stringify(Array.from(setObj)));
       } catch (e) {
         // Ignore storage quota issues
       }
@@ -3902,12 +4283,21 @@
     function computeAchievementSummary() {
       const isEmptySim = state.uiMode === 'empty';
       const tripsCount = isEmptySim ? 0 : state.trips.length;
-      const activitiesCount = isEmptySim ? 0 : document.querySelectorAll('#activities-container .activity-card').length;
-      const bookingsCount = isEmptySim ? 0 : document.querySelectorAll('#bookings-container .booking-card').length;
-      const expensesCount = isEmptySim ? 0 : document.querySelectorAll('#expense-table-body tr').length;
+      const activitiesCount = isEmptySim
+        ? 0
+        : (state.isAuthenticated ? (state.itineraryItems || []).length : document.querySelectorAll('#activities-container .activity-card').length);
+      const bookingsCount = isEmptySim
+        ? 0
+        : (state.isAuthenticated ? (state.bookingNotes || []).length : document.querySelectorAll('#bookings-container .booking-card').length);
+      const expensesCount = isEmptySim
+        ? 0
+        : (state.isAuthenticated && typeof window.__yatraGetExpensesCount === 'function'
+          ? window.__yatraGetExpensesCount()
+          : document.querySelectorAll('#expense-table-body tr').length);
       const savedDestCount = isEmptySim ? 0 : state.savedDestinations.size;
       const hasBudget = !isEmptySim && state.trips.some(t => (t.budget || 0) > 0);
-      const hasOffline = !isEmptySim && Object.keys(localStorage).some(k => k.startsWith('yatrasathi_offline_'));
+      const offlinePrefix = scopedStoragePrefix('offline_');
+      const hasOffline = !isEmptySim && Object.keys(localStorage).some(k => k.startsWith(offlinePrefix));
       const totalActions = tripsCount + activitiesCount + bookingsCount + expensesCount + savedDestCount;
 
       if (totalActions === 0) {
@@ -3926,15 +4316,19 @@
       const persisted = getPersistedUnlocked();
       const unlockedList = [];
       let totalXp = 0;
+      let newlyUnlocked = false;
 
       BADGE_DEFS.forEach(def => {
-        if (def.check(ctx)) persisted.add(def.id);
+        if (def.check(ctx) && !persisted.has(def.id)) {
+          persisted.add(def.id);
+          newlyUnlocked = true;
+        }
         if (persisted.has(def.id)) {
           totalXp += def.xp;
           unlockedList.push(def);
         }
       });
-      savePersistedUnlocked(persisted);
+      savePersistedUnlocked(persisted, newlyUnlocked);
 
       const goals = [
         { title: 'Plan 3 Trips', current: tripsCount, target: 3, xp: 150 },
@@ -3984,7 +4378,7 @@
       // Render Badges Grid
       badgesGridEl.innerHTML = '';
       BADGE_DEFS.forEach(def => {
-        const isUnlocked = persisted.has(def.id);
+        const isUnlocked = unlockedList.some(b => b.id === def.id);
         const card = document.createElement('article');
         card.className = `ach-badge-card${isUnlocked ? ' unlocked' : ''}`;
         card.innerHTML = `
@@ -3992,9 +4386,10 @@
             <strong style="font-size: 0.9375rem;">${def.name}</strong>
             <span class="ach-xp-pill">+${def.xp} XP</span>
           </div>
-          <p style="font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.4;">${def.how}</p>
+          <p style="font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.4; margin: 4px 0 2px;">${def.description}</p>
+          <p style="font-size: 0.75rem; color: var(--color-text-muted); line-height: 1.4; margin: 0;"><strong>How to earn:</strong> ${def.how}</p>
           <span style="font-size: 0.6875rem; font-weight: 800; color: ${isUnlocked ? 'var(--color-state-success)' : 'var(--color-text-muted)'};">
-            ${isUnlocked ? '✓ Unlocked' : 'In Progress'}
+            ${isUnlocked ? '✓ Earned' : 'Locked'}
           </span>
         `;
         badgesGridEl.appendChild(card);
@@ -4058,9 +4453,11 @@
 
     if (!formProfile || !formPassword) return;
 
-    // Load saved local preferences if present
+    // Load saved local preferences only in unauthenticated prototype mode
     try {
-      const saved = JSON.parse(localStorage.getItem('yatrasathi_profile_prefs') || 'null');
+      const saved = !state.isAuthenticated
+        ? JSON.parse(localStorage.getItem('yatrasathi_profile_prefs') || 'null')
+        : null;
       if (saved) {
         if (saved.display_name && nameInput) {
           nameInput.value = saved.display_name;
@@ -4247,6 +4644,319 @@
         showStatus(passStatusEl, `Password update failed: ${err.message}`, true);
       }
     });
+
+    const deleteConfirmInput = document.getElementById('delete-account-confirm-input');
+    const deleteStatusEl = document.getElementById('delete-account-status');
+    const btnDeleteAccount = document.getElementById('btn-delete-account');
+    if (btnDeleteAccount) {
+      btnDeleteAccount.addEventListener('click', async function () {
+        if (!state.isAuthenticated) {
+          showStatus(deleteStatusEl, 'You must be signed in to delete your account.', true);
+          return;
+        }
+        if (state.isOffline) {
+          showStatus(deleteStatusEl, 'Offline Mode: Deleting your account requires internet connectivity.', true);
+          return;
+        }
+        const confirmText = deleteConfirmInput ? deleteConfirmInput.value.trim() : '';
+        if (confirmText !== 'DELETE') {
+          showStatus(deleteStatusEl, 'Please type DELETE in the confirmation box first.', true);
+          if (deleteConfirmInput) deleteConfirmInput.focus();
+          return;
+        }
+        if (!confirm('Permanently delete your YatraSathi account and all trips, itineraries, bookings, expenses, and achievements? This cannot be undone.')) {
+          return;
+        }
+
+        btnDeleteAccount.disabled = true;
+        showStatus(deleteStatusEl, 'Deleting account and revoking active sessions...', false);
+        try {
+          await apiFetch('/api/workspace/account', {
+            method: 'DELETE',
+            body: JSON.stringify({ confirmText })
+          });
+          clearAllUserStorage();
+          state.isAuthenticated = false;
+          state.userId = null;
+          window.location.replace('/index.html?account=deleted');
+        } catch (err) {
+          showStatus(deleteStatusEl, err.message || 'Could not delete account. Your data was preserved.', true);
+          btnDeleteAccount.disabled = false;
+        }
+      });
+    }
+  }
+
+  function initTripReviews() {
+    const formEl = document.getElementById('form-trip-review');
+    const headingEl = document.getElementById('review-form-heading');
+    const editIdEl = document.getElementById('review-edit-id');
+    const tripSelectEl = document.getElementById('review-trip-select');
+    const titleEl = document.getElementById('review-title');
+    const locationEl = document.getElementById('review-location');
+    const ratingEl = document.getElementById('review-rating');
+    const bodyEl = document.getElementById('review-body');
+    const photoInput = document.getElementById('review-photo-input');
+    const photoPreviewWrap = document.getElementById('review-photo-preview-wrap');
+    const photoPreviewImg = document.getElementById('review-photo-preview');
+    const removePhotoBtn = document.getElementById('btn-remove-review-photo');
+    const statusEl = document.getElementById('review-form-status');
+    const submitBtn = document.getElementById('btn-submit-review');
+    const cancelEditBtn = document.getElementById('btn-cancel-review-edit');
+    const feedEl = document.getElementById('trip-reviews-feed');
+    const countBadgeEl = document.getElementById('reviews-count-badge');
+    const googleLinkEl = document.getElementById('link-google-review');
+
+    if (!formEl || !feedEl) return;
+
+    const MAX_PHOTO_BYTES = 250 * 1024;
+    const ALLOWED_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    let pendingPhotoDataUrl = null;
+    let photoTouched = false;
+
+    function setFormStatus(msg, isError) {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.style.color = isError ? 'var(--color-state-error)' : 'var(--color-state-success)';
+      statusEl.style.fontWeight = '700';
+    }
+
+    function updateGoogleReviewLink() {
+      if (!googleLinkEl) return;
+      const loc = (locationEl && locationEl.value.trim()) ||
+        (state.trips.find(t => t.id === state.activeTripId)?.destination) ||
+        'India Travel';
+      googleLinkEl.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
+    }
+
+    function syncTripOptions() {
+      if (!tripSelectEl) return;
+      const cur = tripSelectEl.value;
+      tripSelectEl.innerHTML = '<option value="">General Travel Review</option>' +
+        (state.trips || []).map(t => `<option value="${escapeHtmlAttr(t.id)}">${escapeHtmlAttr(t.name)} (${escapeHtmlAttr(t.destination)})</option>`).join('');
+      if (cur) tripSelectEl.value = cur;
+    }
+
+    function resetReviewForm() {
+      if (editIdEl) editIdEl.value = '';
+      if (headingEl) headingEl.textContent = 'Write a Private Trip Review';
+      if (submitBtn) submitBtn.textContent = 'Save Private Review';
+      if (cancelEditBtn) cancelEditBtn.style.display = 'none';
+      formEl.reset();
+      pendingPhotoDataUrl = null;
+      photoTouched = false;
+      if (photoPreviewWrap) photoPreviewWrap.style.display = 'none';
+      if (photoPreviewImg) photoPreviewImg.removeAttribute('src');
+      updateGoogleReviewLink();
+    }
+
+    if (locationEl) locationEl.addEventListener('input', updateGoogleReviewLink);
+
+    if (photoInput) {
+      photoInput.addEventListener('change', function () {
+        const file = photoInput.files && photoInput.files[0];
+        if (!file) return;
+        if (!ALLOWED_MIMES.has(file.type)) {
+          setFormStatus('Only JPEG, PNG, or WebP photos are supported. Videos and reels are not supported.', true);
+          photoInput.value = '';
+          return;
+        }
+        if (file.size > MAX_PHOTO_BYTES) {
+          setFormStatus('Photo must be 250 KB or smaller for free D1 storage.', true);
+          photoInput.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingPhotoDataUrl = typeof reader.result === 'string' ? reader.result : null;
+          photoTouched = true;
+          if (pendingPhotoDataUrl && photoPreviewImg && photoPreviewWrap) {
+            photoPreviewImg.src = pendingPhotoDataUrl;
+            photoPreviewWrap.style.display = 'block';
+          }
+          setFormStatus('', false);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (removePhotoBtn) {
+      removePhotoBtn.addEventListener('click', () => {
+        pendingPhotoDataUrl = null;
+        photoTouched = true;
+        if (photoInput) photoInput.value = '';
+        if (photoPreviewWrap) photoPreviewWrap.style.display = 'none';
+        if (photoPreviewImg) photoPreviewImg.removeAttribute('src');
+      });
+    }
+
+    if (cancelEditBtn) {
+      cancelEditBtn.addEventListener('click', () => {
+        resetReviewForm();
+        setFormStatus('', false);
+      });
+    }
+
+    function renderReviewsFeed() {
+      syncTripOptions();
+      updateGoogleReviewLink();
+      const reviews = Array.isArray(state.reviews) ? state.reviews : [];
+      if (countBadgeEl) countBadgeEl.textContent = `${reviews.length} Review${reviews.length === 1 ? '' : 's'}`;
+
+      if (!reviews.length) {
+        feedEl.innerHTML = '<div class="empty-state-card" style="padding: var(--space-lg);"><h3 class="empty-state-title">No private reviews yet</h3><p class="empty-state-desc">Write a reflection or memory from your trip on the left. Only your account can see these reviews.</p></div>';
+        return;
+      }
+
+      feedEl.innerHTML = reviews.map(rev => {
+        const stars = '★'.repeat(Math.max(1, Math.min(5, rev.rating || 5))) + '☆'.repeat(5 - Math.max(1, Math.min(5, rev.rating || 5)));
+        const dateStr = rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent';
+        const linkedTrip = rev.tripId ? (state.trips.find(t => t.id === rev.tripId)?.name || '') : '';
+        return `
+          <article class="widget-card" data-review-id="${escapeHtmlAttr(rev.id)}" style="padding: 16px; border: 1px solid var(--color-border-subtle); box-shadow: none;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
+              <div>
+                <h3 style="font-size: 1rem; margin: 0 0 4px;">${escapeHtmlAttr(rev.title)}</h3>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">
+                  ${rev.location ? `${escapeHtmlAttr(rev.location)} • ` : ''}${linkedTrip ? `${escapeHtmlAttr(linkedTrip)} • ` : ''}${dateStr}
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="badge badge-teal" style="font-size: 0.6875rem;">Private</span>
+                <span style="color: var(--color-brand-saffron); font-weight: 700; letter-spacing: 1px;" aria-label="Rated ${rev.rating} out of 5">${stars}</span>
+              </div>
+            </div>
+            <p style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.55; margin: 0 0 12px; white-space: pre-wrap;">${escapeHtmlAttr(rev.body)}</p>
+            ${rev.photoDataUrl ? `<img src="${escapeHtmlAttr(rev.photoDataUrl)}" alt="Trip review attachment" style="width: 100%; max-height: 260px; object-fit: cover; border-radius: var(--radius-sm); margin-bottom: 12px; border: 1px solid var(--color-border-subtle);">` : ''}
+            <div style="display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--color-border-subtle); padding-top: 10px;">
+              <button type="button" class="btn btn-secondary btn-edit-review" style="min-height: 34px; padding: 4px 12px; font-size: 0.8125rem;">Edit</button>
+              <button type="button" class="btn btn-secondary btn-delete-review" style="min-height: 34px; padding: 4px 12px; font-size: 0.8125rem; color: var(--color-state-error); border-color: var(--color-state-error);">Delete</button>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    window.__yatraRenderReviews = renderReviewsFeed;
+
+    feedEl.addEventListener('click', async function (e) {
+      const card = e.target.closest('[data-review-id]');
+      if (!card) return;
+      const reviewId = card.getAttribute('data-review-id');
+      const rev = (state.reviews || []).find(r => r.id === reviewId);
+      if (!rev) return;
+
+      if (e.target.closest('.btn-edit-review')) {
+        if (editIdEl) editIdEl.value = rev.id;
+        if (headingEl) headingEl.textContent = 'Edit Private Trip Review';
+        if (submitBtn) submitBtn.textContent = 'Update Private Review';
+        if (cancelEditBtn) cancelEditBtn.style.display = 'inline-flex';
+        if (tripSelectEl) tripSelectEl.value = rev.tripId || '';
+        if (titleEl) titleEl.value = rev.title || '';
+        if (locationEl) locationEl.value = rev.location || '';
+        if (ratingEl) ratingEl.value = String(rev.rating || 5);
+        if (bodyEl) bodyEl.value = rev.body || '';
+        pendingPhotoDataUrl = rev.photoDataUrl || null;
+        photoTouched = false;
+        if (rev.photoDataUrl && photoPreviewImg && photoPreviewWrap) {
+          photoPreviewImg.src = rev.photoDataUrl;
+          photoPreviewWrap.style.display = 'block';
+        } else if (photoPreviewWrap) {
+          photoPreviewWrap.style.display = 'none';
+        }
+        updateGoogleReviewLink();
+        if (titleEl) titleEl.focus();
+        return;
+      }
+
+      if (e.target.closest('.btn-delete-review')) {
+        if (!confirm('Delete this private trip review permanently?')) return;
+        if (state.isAuthenticated) {
+          try {
+            await apiFetch(`/api/workspace/reviews/${encodeURIComponent(reviewId)}`, { method: 'DELETE' });
+          } catch (err) {
+            setFormStatus(err.message || 'Could not delete review.', true);
+            return;
+          }
+        }
+        state.reviews = (state.reviews || []).filter(r => r.id !== reviewId);
+        renderReviewsFeed();
+        showToast('Private trip review deleted.');
+      }
+    });
+
+    formEl.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (state.isOffline) {
+        setFormStatus('Offline Mode: Saving trip reviews requires internet connectivity.', true);
+        return;
+      }
+      const editId = editIdEl ? editIdEl.value.trim() : '';
+      const title = titleEl ? titleEl.value.trim() : '';
+      const location = locationEl ? locationEl.value.trim() : '';
+      const rating = ratingEl ? parseInt(ratingEl.value, 10) : 5;
+      const body = bodyEl ? bodyEl.value.trim() : '';
+      const tripId = tripSelectEl && tripSelectEl.value ? tripSelectEl.value : null;
+
+      if (!title || !body) {
+        setFormStatus('Please enter a review title and review notes.', true);
+        return;
+      }
+
+      if (editId) {
+        const payload = { title, location, rating, body };
+        if (photoTouched) payload.photoDataUrl = pendingPhotoDataUrl;
+        if (state.isAuthenticated) {
+          try {
+            const res = await apiFetch(`/api/workspace/reviews/${encodeURIComponent(editId)}`, {
+              method: 'PATCH',
+              body: JSON.stringify(payload)
+            });
+            state.reviews = (state.reviews || []).map(r => (r.id === editId ? res.review : r));
+          } catch (err) {
+            setFormStatus(err.message || 'Could not update review.', true);
+            return;
+          }
+        }
+        resetReviewForm();
+        renderReviewsFeed();
+        setFormStatus('Private review updated.', false);
+        showToast('Trip review updated!');
+        return;
+      }
+
+      if (state.isAuthenticated) {
+        try {
+          const res = await apiFetch('/api/workspace/reviews', {
+            method: 'POST',
+            body: JSON.stringify({ tripId, title, location, rating, body, photoDataUrl: pendingPhotoDataUrl })
+          });
+          state.reviews = [res.review, ...(state.reviews || [])];
+        } catch (err) {
+          setFormStatus(err.message || 'Could not save review.', true);
+          return;
+        }
+      } else {
+        state.reviews = [{
+          id: `rev-${Date.now()}`,
+          tripId,
+          title,
+          location,
+          rating,
+          body,
+          photoDataUrl: pendingPhotoDataUrl,
+          visibility: 'private',
+          createdAt: Date.now()
+        }, ...(state.reviews || [])];
+      }
+
+      resetReviewForm();
+      renderReviewsFeed();
+      setFormStatus('Private review saved to D1.', false);
+      showToast('Private trip review saved!');
+    });
+
+    renderReviewsFeed();
   }
 
   // --- 18. App Bootstrapping ---
@@ -4266,6 +4976,7 @@
     initExpensesLedger();
     initAchievementsTracker();
     initProfileSettings();
+    initTripReviews();
     syncActiveTripUI('trip-1');
     if (typeof window.__yatraRenderDashboard === 'function') window.__yatraRenderDashboard();
   });

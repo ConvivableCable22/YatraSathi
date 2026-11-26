@@ -133,6 +133,101 @@
   color: inherit;
 }
 
+.brand-wordmark-sidebar {
+  height: 40px;
+  width: auto;
+  max-width: 190px;
+  display: block;
+}
+
+.mobile-top-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-brand-mark {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.real-leaflet-map {
+  width: 100%;
+  height: 380px;
+  min-height: 380px;
+  flex: 1;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  z-index: 1;
+}
+
+@media (max-width: 640px) {
+  .real-leaflet-map {
+    height: 280px;
+    min-height: 280px;
+  }
+}
+
+.leaflet-numbered-pin {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-pin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 9999px;
+  background: var(--color-brand-ink);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  border: 2px solid #FFFFFF;
+}
+
+.leaflet-pin-pill.active {
+  background: var(--color-brand-teal);
+}
+
+.leaflet-pin-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-brand-saffron);
+  color: var(--color-brand-ink);
+  font-weight: 800;
+  font-size: 0.68rem;
+}
+
+.map-fallback-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  gap: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+}
+
+.map-fallback-state strong {
+  color: var(--color-text-primary);
+  font-size: 1rem;
+}
+
 .brand-icon {
   width: 32px;
   height: 32px;
@@ -2204,14 +2299,16 @@
 .map-badge-overlay {
   position: absolute;
   top: 12px;
-  left: 12px;
-  background: rgba(23, 34, 31, 0.8);
+  right: 12px;
+  left: auto;
+  background: rgba(23, 34, 31, 0.85);
   color: #FFFFFF;
   padding: 4px 10px;
   border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 700;
-  z-index: 2;
+  z-index: 500;
+  pointer-events: none;
 }
 
 .map-list-fallback {

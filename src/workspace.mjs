@@ -8,11 +8,99 @@
  * - Client-supplied user IDs, roles, and aggregate totals are ignored.
  */
 
+import {
+  STATE_CATALOG,
+  generateFlexibleItinerary,
+  validateStateAndDestinations
+} from './destinations.mjs';
+
 const VALID_TRIP_STATUSES = new Set(['planning', 'upcoming', 'active', 'completed', 'archived']);
 const VALID_EXPENSE_CATEGORIES = new Set(['transport', 'stay', 'food', 'activities', 'other']);
 const VALID_BOOKING_CATEGORIES = new Set(['transport', 'stay', 'activity', 'other']);
 const VALID_PACING = new Set(['relaxed', 'active', 'slow']);
 const VALID_BUDGET_PREF = new Set(['budget', 'balanced', 'comfort']);
+const SERVER_ACHIEVEMENT_RULES = [
+  { id: 'first-blueprint', check: c => c.tripsCount >= 1 },
+  { id: 'budget-architect', check: c => c.budgetTripsCount >= 1 },
+  { id: 'route-scout', check: c => c.itineraryCount >= 3 },
+  { id: 'vault-keeper', check: c => c.bookingsCount >= 1 },
+  { id: 'expense-tracker', check: c => c.expensesCount >= 1 },
+  { id: 'destination-explorer', check: c => c.savedDestCount >= 2 }
+];
+
+async function evaluateUserAchievements(db, userId, now = Date.now()) {
+  const countsRow = await db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM trips WHERE owner_id = ?) AS tripsCount,
+         (SELECT COUNT(*) FROM trips WHERE owner_id = ? AND budget_paise > 0) AS budgetTripsCount,
+         (SELECT COUNT(*) FROM itinerary_items i JOIN trips t ON t.id = i.trip_id WHERE t.owner_id = ?) AS itineraryCount,
+         (SELECT COUNT(*) FROM booking_notes WHERE user_id = ?) AS bookingsCount,
+         (SELECT COUNT(*) FROM expenses WHERE created_by = ?) AS expensesCount,
+         (SELECT COUNT(*) FROM saved_destinations WHERE user_id = ?) AS savedDestCount`
+    )
+    .bind(userId, userId, userId, userId, userId, userId)
+    .first();
+
+  const counts = {
+    tripsCount: Number(countsRow?.tripsCount) || 0,
+    budgetTripsCount: Number(countsRow?.budgetTripsCount) || 0,
+    itineraryCount: Number(countsRow?.itineraryCount) || 0,
+    bookingsCount: Number(countsRow?.bookingsCount) || 0,
+    expensesCount: Number(countsRow?.expensesCount) || 0,
+    savedDestCount: Number(countsRow?.savedDestCount) || 0
+  };
+
+  const earnedIds = SERVER_ACHIEVEMENT_RULES.filter(r => r.check(counts)).map(r => r.id);
+  if (earnedIds.length > 0) {
+    await db.batch(
+      earnedIds.map(badgeId =>
+        db
+          .prepare(`INSERT OR IGNORE INTO user_achievements (user_id, badge_id, unlocked_at) VALUES (?, ?, ?)`)
+          .bind(userId, badgeId, now)
+      )
+    );
+  }
+
+  const achRes = await db
+    .prepare(`SELECT badge_id FROM user_achievements WHERE user_id = ? ORDER BY unlocked_at ASC, badge_id ASC`)
+    .bind(userId)
+    .all();
+
+  return (achRes.results || []).map(r => r.badge_id);
+}
+const ALLOWED_REVIEW_PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_REVIEW_PHOTO_BYTES = 250 * 1024;
+
+function validateReviewPhotoDataUrl(raw) {
+  if (raw === undefined || raw === null || raw === '') {
+    return { ok: true, dataUrl: null, mime: null, bytes: 0 };
+  }
+  const str = String(raw).trim();
+  const match = str.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) {
+    return {
+      ok: false,
+      code: 'INVALID_MEDIA_TYPE',
+      message: 'Only JPEG, PNG, or WebP photos are supported. Videos and reels are not supported.'
+    };
+  }
+  const mime = match[1];
+  const b64 = match[2];
+  if (!ALLOWED_REVIEW_PHOTO_MIMES.has(mime)) {
+    return { ok: false, code: 'INVALID_MEDIA_TYPE', message: 'Unsupported image format.' };
+  }
+  const padding = b64.endsWith('==') ? 2 : (b64.endsWith('=') ? 1 : 0);
+  const bytes = Math.floor((b64.length * 3) / 4) - padding;
+  if (bytes <= 0 || bytes > MAX_REVIEW_PHOTO_BYTES) {
+    return {
+      ok: false,
+      code: 'MEDIA_TOO_LARGE',
+      message: 'Photo attachment must be 250 KB or smaller.'
+    };
+  }
+  return { ok: true, dataUrl: str, mime, bytes };
+}
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -171,6 +259,18 @@ async function handleBootstrap(sessionUser, env) {
     .bind(userId)
     .all();
 
+  const achievements = await evaluateUserAchievements(db, userId, Date.now());
+
+  const reviewRes = await db
+    .prepare(
+      `SELECT id, trip_id, title, location, rating, body, photo_data_url, photo_mime, photo_bytes, visibility, created_at, updated_at
+       FROM trip_reviews
+       WHERE user_id = ?
+       ORDER BY created_at DESC`
+    )
+    .bind(userId)
+    .all();
+
   const trips = (tripRows.results || []).map(r => ({
     id: r.id,
     name: r.name,
@@ -212,6 +312,21 @@ async function handleBootstrap(sessionUser, env) {
     itineraryItems,
     expenses,
     bookingNotes,
+    achievements,
+    reviews: (reviewRes.results || []).map(r => ({
+      id: r.id,
+      tripId: r.trip_id || null,
+      title: r.title,
+      location: r.location || '',
+      rating: Number(r.rating) || 5,
+      body: r.body,
+      photoDataUrl: r.photo_data_url || null,
+      photoMime: r.photo_mime || null,
+      photoBytes: Number(r.photo_bytes) || 0,
+      visibility: 'private',
+      createdAt: Number(r.created_at) || 0,
+      updatedAt: Number(r.updated_at) || 0
+    })),
     recentActivity: (activityRes.results || []).map(r => ({
       id: r.id,
       tripId: r.trip_id,
@@ -271,6 +386,63 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
     return jsonResponse({ ok: true, profile: { displayName, phone, pacing, budgetPref, interests } });
   }
 
+  if (path === '/api/workspace/account' && method === 'DELETE') {
+    const body = await request.json().catch(() => ({}));
+    if (String(body.confirmText || '').trim() !== 'DELETE') {
+      return jsonResponse({
+        ok: false,
+        code: 'CONFIRMATION_REQUIRED',
+        message: 'Type DELETE to permanently delete your account.'
+      }, 400);
+    }
+
+    const userEmail = String(sessionUser.email || '').trim();
+    const deleteStatements = [
+      db.prepare(`DELETE FROM session WHERE userId = ?`).bind(userId),
+      db.prepare(`DELETE FROM account WHERE userId = ?`).bind(userId),
+      ...(userEmail ? [db.prepare(`DELETE FROM verification WHERE identifier = ?`).bind(userEmail)] : []),
+      db.prepare(`DELETE FROM google_otp_challenges WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM password_resets WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM email_logs WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM user_achievements WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM trip_reviews WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM activity_events WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM saved_destinations WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM user_profiles WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM bookings WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM payment_orders WHERE user_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM itinerary_items WHERE created_by = ? OR trip_id IN (SELECT id FROM trips WHERE owner_id = ?)`).bind(userId, userId),
+      db.prepare(`DELETE FROM expenses WHERE created_by = ? OR trip_id IN (SELECT id FROM trips WHERE owner_id = ?)`).bind(userId, userId),
+      db.prepare(`DELETE FROM booking_notes WHERE user_id = ? OR trip_id IN (SELECT id FROM trips WHERE owner_id = ?)`).bind(userId, userId),
+      db.prepare(`DELETE FROM trip_members WHERE user_id = ? OR trip_id IN (SELECT id FROM trips WHERE owner_id = ?)`).bind(userId, userId),
+      db.prepare(`DELETE FROM trips WHERE owner_id = ?`).bind(userId),
+      db.prepare(`DELETE FROM user WHERE id = ?`).bind(userId)
+    ];
+
+    try {
+      const batchResults = await db.batch(deleteStatements);
+      const userDeleteResult = batchResults[batchResults.length - 1];
+      if (!userDeleteResult?.meta?.changes) {
+        return jsonResponse({ ok: false, code: 'ACCOUNT_NOT_FOUND', message: 'Account could not be deleted.' }, 404);
+      }
+    } catch {
+      return jsonResponse({
+        ok: false,
+        code: 'ACCOUNT_DELETE_FAILED',
+        message: 'Could not delete your account due to a database error. No changes were applied.'
+      }, 500);
+    }
+
+    const isHttps = url.protocol === 'https:';
+    const headers = new Headers({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    const secureFlag = isHttps ? '; Secure' : '';
+    headers.append('Set-Cookie', `__Secure-better-auth.session_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`);
+    headers.append('Set-Cookie', `better-auth.session_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`);
+    headers.append('Set-Cookie', `ys_google_otp=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`);
+
+    return new Response(JSON.stringify({ ok: true, deleted: true }), { status: 200, headers });
+  }
+
   if (path === '/api/workspace/saved-destinations/toggle' && method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const destinationId = String(body.destinationId || '').trim().slice(0, 64);
@@ -309,11 +481,35 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
     });
   }
 
+  if (path === '/api/workspace/achievements/sync' && method === 'POST') {
+    // Recompute strictly from D1 activity; ignore any client-supplied badgeIds
+    const achievements = await evaluateUserAchievements(db, userId, now);
+    return jsonResponse({ ok: true, achievements });
+  }
+
   if (path === '/api/workspace/trips' && method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const name = String(body.name || '').trim().slice(0, 120);
-    const destination = String(body.destination || '').trim().slice(0, 120);
-    if (!name || !destination) {
+    const rawTheme = String(body.theme || 'rajasthan').trim().slice(0, 32);
+    const hasSelectedPlaces = Array.isArray(body.selectedPlaces);
+    let selectedPlaces = [];
+    let derivedDestination = String(body.destination || '').trim().slice(0, 120);
+
+    if (hasSelectedPlaces || body.generateItinerary) {
+      const validation = validateStateAndDestinations(rawTheme, body.selectedPlaces);
+      if (!validation.ok) {
+        return jsonResponse({ ok: false, code: validation.code, message: validation.message }, 400);
+      }
+      selectedPlaces = validation.destinationIds;
+      if (!derivedDestination) {
+        derivedDestination = selectedPlaces
+          .map(id => validation.stateDef.destinations[id].label)
+          .join(', ')
+          .slice(0, 120);
+      }
+    }
+
+    if (!name || !derivedDestination) {
       return jsonResponse({ ok: false, code: 'INVALID_TRIP', message: 'Trip name and destination are required.' }, 400);
     }
 
@@ -325,19 +521,46 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
 
     const travelers = Math.max(1, Math.min(50, Math.round(Number(body.travelers) || 2)));
     const budgetPaise = Math.max(0, Math.round(Number(body.budgetPaise ?? (Number(body.budget || 0) * 100)) || 0));
-    const theme = String(body.theme || 'rajasthan').slice(0, 32);
+    const theme = STATE_CATALOG[rawTheme] ? rawTheme : 'rajasthan';
     const tripId = `trip-${crypto.randomUUID()}`;
+    const durationDays = Math.max(1, Math.min(30, Math.round(Number(body.durationDays) || 3)));
+
+    const generatedPlan = body.generateItinerary
+      ? generateFlexibleItinerary(theme, selectedPlaces, durationDays)
+      : [];
+    const generatedItems = generatedPlan.map((item, idx) => ({
+      id: `it-${crypto.randomUUID()}`,
+      tripId,
+      dayKey: item.dayKey,
+      timeLabel: item.timeLabel,
+      durationLabel: item.durationLabel,
+      title: item.title,
+      location: item.location,
+      notes: item.notes,
+      estimatedCostPaise: item.estimatedCostPaise,
+      sortOrder: idx
+    }));
+
+    const estimatedPaise = generatedItems.reduce((sum, it) => sum + (it.estimatedCostPaise || 0), 0);
 
     await db.batch([
       db
         .prepare(
-          `INSERT INTO trips (id, owner_id, name, destination, start_date, end_date, travelers, budget_paise, currency, theme, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'INR', ?, 'upcoming', ?, ?)`
+          `INSERT INTO trips (id, owner_id, name, destination, start_date, end_date, travelers, budget_paise, currency, theme, status, selected_places_json, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'INR', ?, 'upcoming', ?, ?, ?)`
         )
-        .bind(tripId, userId, name, destination, startDate, endDate, travelers, budgetPaise, theme, now, now),
+        .bind(tripId, userId, name, derivedDestination, startDate, endDate, travelers, budgetPaise, theme, JSON.stringify(selectedPlaces), now, now),
       db
         .prepare(`INSERT INTO trip_members (trip_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)`)
-        .bind(tripId, userId, now)
+        .bind(tripId, userId, now),
+      ...generatedItems.map(it =>
+        db
+          .prepare(
+            `INSERT INTO itinerary_items (id, trip_id, day_key, time_label, duration_label, title, location, notes, estimated_cost_paise, sort_order, created_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(it.id, tripId, it.dayKey, it.timeLabel, it.durationLabel, it.title, it.location, it.notes, it.estimatedCostPaise, it.sortOrder, userId, now)
+      )
     ]);
 
     await recordActivity(db, userId, tripId, 'trip_created', `Created trip "${name}"`, now);
@@ -347,7 +570,7 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
       trip: {
         id: tripId,
         name,
-        destination,
+        destination: derivedDestination,
         startDate: startDate || '',
         endDate: endDate || '',
         travelers,
@@ -355,15 +578,16 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
         budgetPaise,
         spent: 0,
         spentPaise: 0,
-        estimated: 0,
-        estimatedPaise: 0,
+        estimated: Math.round(estimatedPaise / 100),
+        estimatedPaise,
         theme,
         status: 'upcoming',
         selectedRouteId: null,
-        selectedPlaces: [],
+        selectedPlaces,
         bookingsCount: 0,
         role: 'Owner'
-      }
+      },
+      itineraryItems: generatedItems
     }, 201);
   }
 
@@ -371,12 +595,12 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
   if (tripMatch && method === 'PATCH') {
     const tripId = decodeURIComponent(tripMatch[1]);
     const membership = await getTripMembership(db, tripId, userId);
-    if (!membership) {
+    if (!membership || membership.role !== 'owner') {
       return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Trip not found or access denied.' }, 403);
     }
 
     const body = await request.json().catch(() => ({}));
-    const existing = await db.prepare(`SELECT * FROM trips WHERE id = ?`).bind(tripId).first();
+    const existing = await db.prepare(`SELECT * FROM trips WHERE id = ? AND owner_id = ?`).bind(tripId, userId).first();
     if (!existing) {
       return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Trip not found.' }, 404);
     }
@@ -407,15 +631,19 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
       ? JSON.stringify(body.selectedPlaces.map(p => String(p).slice(0, 64)).slice(0, 50))
       : existing.selected_places_json;
 
-    await db
+    const updRes = await db
       .prepare(
         `UPDATE trips
          SET name = ?, destination = ?, start_date = ?, end_date = ?, travelers = ?, budget_paise = ?,
              theme = ?, status = ?, selected_route_id = ?, selected_places_json = ?, updated_at = ?
-         WHERE id = ?`
+         WHERE id = ? AND owner_id = ?`
       )
-      .bind(name, destination, startDate, endDate, travelers, budgetPaise, theme, status, selectedRouteId, selectedPlacesJson, now, tripId)
+      .bind(name, destination, startDate, endDate, travelers, budgetPaise, theme, status, selectedRouteId, selectedPlacesJson, now, tripId, userId)
       .run();
+
+    if (!updRes?.meta?.changes) {
+      return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Trip not found or access denied.' }, 403);
+    }
 
     await recordActivity(db, userId, tripId, 'trip_updated', `Updated trip "${name}"`, now);
 
@@ -468,7 +696,17 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
       return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Trip not found or access denied.' }, 403);
     }
 
-    await db.prepare(`DELETE FROM itinerary_items WHERE id = ? AND trip_id = ?`).bind(itemId, tripId).run();
+    const delRes = await db
+      .prepare(
+        `DELETE FROM itinerary_items
+         WHERE id = ? AND trip_id = ?
+           AND (created_by = ? OR EXISTS (SELECT 1 FROM trips t WHERE t.id = itinerary_items.trip_id AND t.owner_id = ?))`
+      )
+      .bind(itemId, tripId, userId, userId)
+      .run();
+    if (!delRes?.meta?.changes) {
+      return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Itinerary item not found.' }, 404);
+    }
     return jsonResponse({ ok: true });
   }
 
@@ -527,19 +765,33 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
         return jsonResponse({ ok: false, code: 'INVALID_EXPENSE', message: 'Positive amount and description are required.' }, 400);
       }
 
-      await db
+      const updExp = await db
         .prepare(
           `UPDATE expenses SET category = ?, amount_paise = ?, spent_on = ?, note = ?, updated_at = ?
-           WHERE id = ? AND trip_id = ?`
+           WHERE id = ? AND trip_id = ?
+             AND (created_by = ? OR EXISTS (SELECT 1 FROM trips t WHERE t.id = expenses.trip_id AND t.owner_id = ?))`
         )
-        .bind(category, amountPaise, spentOn, note, now, expId, tripId)
+        .bind(category, amountPaise, spentOn, note, now, expId, tripId, userId, userId)
         .run();
+      if (!updExp?.meta?.changes) {
+        return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Expense not found.' }, 404);
+      }
 
       return jsonResponse({ ok: true });
     }
 
     if (method === 'DELETE') {
-      await db.prepare(`DELETE FROM expenses WHERE id = ? AND trip_id = ?`).bind(expId, tripId).run();
+      const delExp = await db
+        .prepare(
+          `DELETE FROM expenses
+           WHERE id = ? AND trip_id = ?
+             AND (created_by = ? OR EXISTS (SELECT 1 FROM trips t WHERE t.id = expenses.trip_id AND t.owner_id = ?))`
+        )
+        .bind(expId, tripId, userId, userId)
+        .run();
+      if (!delExp?.meta?.changes) {
+        return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Expense not found.' }, 404);
+      }
       return jsonResponse({ ok: true });
     }
   }
@@ -599,8 +851,195 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
       return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Trip not found or access denied.' }, 403);
     }
 
-    await db.prepare(`DELETE FROM booking_notes WHERE id = ? AND trip_id = ?`).bind(noteId, tripId).run();
+    const delNote = await db
+      .prepare(
+        `DELETE FROM booking_notes
+         WHERE id = ? AND trip_id = ?
+           AND (user_id = ? OR EXISTS (SELECT 1 FROM trips t WHERE t.id = booking_notes.trip_id AND t.owner_id = ?))`
+      )
+      .bind(noteId, tripId, userId, userId)
+      .run();
+    if (!delNote?.meta?.changes) {
+      return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Booking note not found.' }, 404);
+    }
     return jsonResponse({ ok: true });
+  }
+
+  if (path === '/api/workspace/reviews' && method === 'GET') {
+    const res = await db
+      .prepare(
+        `SELECT id, trip_id, title, location, rating, body, photo_data_url, photo_mime, photo_bytes, visibility, created_at, updated_at
+         FROM trip_reviews
+         WHERE user_id = ?
+         ORDER BY created_at DESC`
+      )
+      .bind(userId)
+      .all();
+    return jsonResponse({
+      ok: true,
+      reviews: (res.results || []).map(r => ({
+        id: r.id,
+        tripId: r.trip_id || null,
+        title: r.title,
+        location: r.location || '',
+        rating: Number(r.rating) || 5,
+        body: r.body,
+        photoDataUrl: r.photo_data_url || null,
+        photoMime: r.photo_mime || null,
+        photoBytes: Number(r.photo_bytes) || 0,
+        visibility: 'private',
+        createdAt: Number(r.created_at) || 0,
+        updatedAt: Number(r.updated_at) || 0
+      }))
+    });
+  }
+
+  if (path === '/api/workspace/reviews' && method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const title = String(body.title || '').trim().slice(0, 120);
+    const reviewBody = String(body.body || '').trim().slice(0, 2000);
+    const location = String(body.location || '').trim().slice(0, 120);
+    const rating = Math.round(Number(body.rating));
+    const tripId = body.tripId ? String(body.tripId).trim().slice(0, 64) : null;
+
+    if (!title || !reviewBody) {
+      return jsonResponse({ ok: false, code: 'INVALID_REVIEW', message: 'Review title and notes are required.' }, 400);
+    }
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return jsonResponse({ ok: false, code: 'INVALID_RATING', message: 'Rating must be between 1 and 5.' }, 400);
+    }
+    if (tripId) {
+      const membership = await getTripMembership(db, tripId, userId);
+      if (!membership) {
+        return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Trip not found or access denied.' }, 403);
+      }
+    }
+
+    const photoCheck = validateReviewPhotoDataUrl(body.photoDataUrl);
+    if (!photoCheck.ok) {
+      return jsonResponse({ ok: false, code: photoCheck.code, message: photoCheck.message }, 400);
+    }
+
+    const reviewId = `rev-${crypto.randomUUID()}`;
+    await db
+      .prepare(
+        `INSERT INTO trip_reviews (id, user_id, trip_id, title, location, rating, body, photo_data_url, photo_mime, photo_bytes, visibility, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'private', ?, ?)`
+      )
+      .bind(
+        reviewId,
+        userId,
+        tripId,
+        title,
+        location,
+        rating,
+        reviewBody,
+        photoCheck.dataUrl,
+        photoCheck.mime,
+        photoCheck.bytes,
+        now,
+        now
+      )
+      .run();
+
+    await recordActivity(db, userId, tripId, 'review_created', `Saved private trip review "${title}"`, now);
+
+    return jsonResponse({
+      ok: true,
+      review: {
+        id: reviewId,
+        tripId,
+        title,
+        location,
+        rating,
+        body: reviewBody,
+        photoDataUrl: photoCheck.dataUrl,
+        photoMime: photoCheck.mime,
+        photoBytes: photoCheck.bytes,
+        visibility: 'private',
+        createdAt: now,
+        updatedAt: now
+      }
+    }, 201);
+  }
+
+  const reviewMatch = path.match(/^\/api\/workspace\/reviews\/([^/]+)$/);
+  if (reviewMatch) {
+    const reviewId = decodeURIComponent(reviewMatch[1]);
+    if (method === 'PATCH') {
+      const existing = await db
+        .prepare(`SELECT * FROM trip_reviews WHERE id = ? AND user_id = ?`)
+        .bind(reviewId, userId)
+        .first();
+      if (!existing) {
+        return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Review not found or access denied.' }, 404);
+      }
+
+      const body = await request.json().catch(() => ({}));
+      const title = body.title !== undefined ? String(body.title).trim().slice(0, 120) : existing.title;
+      const reviewBody = body.body !== undefined ? String(body.body).trim().slice(0, 2000) : existing.body;
+      const location = body.location !== undefined ? String(body.location).trim().slice(0, 120) : existing.location;
+      const rating = body.rating !== undefined ? Math.round(Number(body.rating)) : Number(existing.rating);
+
+      if (!title || !reviewBody || !Number.isFinite(rating) || rating < 1 || rating > 5) {
+        return jsonResponse({ ok: false, code: 'INVALID_REVIEW', message: 'Valid title, rating (1-5), and notes are required.' }, 400);
+      }
+
+      let photoDataUrl = existing.photo_data_url;
+      let photoMime = existing.photo_mime;
+      let photoBytes = Number(existing.photo_bytes) || 0;
+      if (body.photoDataUrl !== undefined) {
+        const photoCheck = validateReviewPhotoDataUrl(body.photoDataUrl);
+        if (!photoCheck.ok) {
+          return jsonResponse({ ok: false, code: photoCheck.code, message: photoCheck.message }, 400);
+        }
+        photoDataUrl = photoCheck.dataUrl;
+        photoMime = photoCheck.mime;
+        photoBytes = photoCheck.bytes;
+      }
+
+      const upd = await db
+        .prepare(
+          `UPDATE trip_reviews
+           SET title = ?, location = ?, rating = ?, body = ?, photo_data_url = ?, photo_mime = ?, photo_bytes = ?, updated_at = ?
+           WHERE id = ? AND user_id = ?`
+        )
+        .bind(title, location, rating, reviewBody, photoDataUrl, photoMime, photoBytes, now, reviewId, userId)
+        .run();
+
+      if (!upd?.meta?.changes) {
+        return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Review not found.' }, 404);
+      }
+
+      return jsonResponse({
+        ok: true,
+        review: {
+          id: reviewId,
+          tripId: existing.trip_id || null,
+          title,
+          location,
+          rating,
+          body: reviewBody,
+          photoDataUrl,
+          photoMime,
+          photoBytes,
+          visibility: 'private',
+          createdAt: Number(existing.created_at) || 0,
+          updatedAt: now
+        }
+      });
+    }
+
+    if (method === 'DELETE') {
+      const del = await db
+        .prepare(`DELETE FROM trip_reviews WHERE id = ? AND user_id = ?`)
+        .bind(reviewId, userId)
+        .run();
+      if (!del?.meta?.changes) {
+        return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Review not found or access denied.' }, 404);
+      }
+      return jsonResponse({ ok: true });
+    }
   }
 
   return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Workspace endpoint not found.' }, 404);

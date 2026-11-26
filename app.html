@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YatraSathi — Trip Planning Workspace</title>
   <meta name="description" content="Signed-in trip-planning workspace for YatraSathi: Explore India, My Trips, Itinerary Builder, Maps & Routes, Bookings, Expenses, Achievements, and Profile.">
+  <link rel="icon" type="image/svg+xml" href="assets/brand/yatrasathi-favicon.svg">
+  <link rel="apple-touch-icon" href="assets/brand/yatrasathi-favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
 </head>
 <body class="app-body">
   <!-- Skip navigation link for keyboard screen-reader users -->
@@ -35,11 +38,7 @@
       <!-- Sidebar Header / Brand -->
       <div class="sidebar-header">
         <a href="index.html" class="brand-logo" title="Back to YatraSathi Home">
-          <div class="brand-icon" aria-hidden="true">YS</div>
-          <div class="brand-text">
-            <span class="brand-name">YatraSathi</span>
-            <span class="brand-tagline-sub">Trip Workspace</span>
-          </div>
+          <img src="assets/brand/yatrasathi-wordmark-light.svg" alt="YatraSathi — Raaste naye, saath apna" class="brand-wordmark-sidebar">
         </a>
         <button class="sidebar-close-btn" id="sidebar-close-btn" type="button" aria-label="Close navigation sidebar">×</button>
       </div>
@@ -113,6 +112,12 @@
               <span>8. Profile & Settings</span>
             </button>
           </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="trip-reviews" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>9. Trip Reviews</span>
+            </button>
+          </li>
         </ul>
       </nav>
 
@@ -139,6 +144,7 @@
           <span></span>
         </button>
         <div class="mobile-top-brand">
+          <img src="assets/brand/yatrasathi-mark.svg" alt="" class="mobile-brand-mark" aria-hidden="true">
           <span class="brand-name">YatraSathi</span>
         </div>
         <button class="btn btn-primary" id="btn-mobile-new-trip" type="button" style="padding: 4px 10px; font-size: 0.75rem; min-height: 32px;">
@@ -174,7 +180,7 @@
       <div id="simulated-error-banner" class="error-alert-box" style="display: none;" role="alert">
         <div style="display: flex; align-items: center; gap: 10px;">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          <span><strong>Access Restricted or Synchronization Failed:</strong> You do not have collaborator permissions for this trip ID, or your network dropped.</span>
+          <span id="error-banner-text"><strong>Access Restricted or Synchronization Failed:</strong> You do not have collaborator permissions for this trip ID, or your network dropped.</span>
         </div>
         <button class="btn btn-secondary" id="btn-retry-error" style="padding: 4px 12px; min-height: 32px; font-size: 0.8125rem;">Retry Request</button>
       </div>
@@ -792,15 +798,12 @@
               <!-- Right Column: Linked Interactive Map, Marker Details & Route Comparison -->
               <div class="itinerary-map-col">
                 <div class="itinerary-map-panel">
-                  <div class="map-mockup-canvas itinerary-svg-wrap" id="itinerary-map-canvas" aria-label="Interactive route map for selected itinerary option">
-                    <div class="map-badge-overlay" id="itinerary-map-badge">Illustrative Route Preview • Estimates Only</div>
-                    <svg id="itinerary-route-svg" width="100%" height="300" viewBox="0 0 600 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Route path between ordered itinerary stops">
-                      <rect width="600" height="320" fill="#FAF6EE" rx="12"/>
-                      <path d="M0 80 H600 M0 160 H600 M0 240 H600 M150 0 V320 M300 0 V320 M450 0 V320" stroke="#EBEFEA" stroke-width="1"/>
-                      <path id="itinerary-route-line" d="M90 190 L290 120 L490 170" stroke="#06706B" stroke-width="4" stroke-dasharray="8 6" stroke-linecap="round"/>
-                    </svg>
-                    <div id="itinerary-map-markers" class="itinerary-map-markers" aria-label="Numbered place markers">
-                      <!-- Interactive keyboard-accessible marker buttons rendered by js/planner.js -->
+                  <div class="map-mockup-canvas itinerary-svg-wrap" id="itinerary-map-canvas" aria-label="Interactive OpenStreetMap route preview for selected itinerary option">
+                    <div class="map-badge-overlay" id="itinerary-map-badge">Straight-line preview • Not road directions or travel times</div>
+                    <div id="itinerary-leaflet-map" class="real-leaflet-map" role="region" aria-label="Interactive OpenStreetMap for itinerary stops"></div>
+                    <div id="itinerary-map-fallback" class="map-fallback-state" aria-live="polite" style="display: none;">
+                      <strong>Map Locations Unavailable</strong>
+                      <span>No stop coordinates are available for this selection. Review your stops in the itinerary list.</span>
                     </div>
                   </div>
 
@@ -970,16 +973,12 @@
           <div class="map-split-view" id="map-view-container">
             <!-- Simulated SVG Map Canvas + Marker Details -->
             <div style="display: flex; flex-direction: column; gap: var(--space-md);">
-              <div class="map-mockup-canvas itinerary-svg-wrap" aria-label="Route visual map">
-                <div class="map-badge-overlay" id="maps-fallback-badge">Fallback Estimate • Illustrative Route Preview</div>
-                <svg width="100%" height="340" viewBox="0 0 600 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive route preview with numbered stops">
-                  <rect width="600" height="320" fill="#FAF6EE" rx="12"/>
-                  <path d="M0 80 H600 M0 160 H600 M0 240 H600 M150 0 V320 M300 0 V320 M450 0 V320" stroke="#EBEFEA" stroke-width="1"/>
-                  <path id="maps-route-line-alt" d="" stroke="#9BA6A1" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>
-                  <path id="maps-route-line-active" d="" stroke="#06706B" stroke-width="4" stroke-dasharray="8 6" stroke-linecap="round"/>
-                </svg>
-                <div id="maps-markers-layer" class="itinerary-map-markers" aria-label="Numbered place markers">
-                  <!-- Populated dynamically by js/planner.js -->
+              <div class="map-mockup-canvas itinerary-svg-wrap" aria-label="Interactive OpenStreetMap route preview">
+                <div class="map-badge-overlay" id="maps-fallback-badge">Straight-line preview • Not road directions or travel times</div>
+                <div id="maps-leaflet-map" class="real-leaflet-map" role="region" aria-label="Interactive OpenStreetMap for trip routes"></div>
+                <div id="maps-fallback-overlay" class="map-fallback-state" aria-live="polite" style="display: none;">
+                  <strong>Map Locations Unavailable</strong>
+                  <span>No stop coordinates are available for this selection. Stops remain listed in the sequence panel.</span>
                 </div>
               </div>
 
@@ -1582,6 +1581,113 @@
                   </p>
                 </div>
               </div>
+
+              <!-- Danger Zone: Delete Account -->
+              <div class="widget-card" style="border-color: rgba(185, 28, 28, 0.35);">
+                <h2 class="widget-title" style="color: var(--color-state-error);">Delete Account</h2>
+                <p style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 12px;">
+                  Permanently delete your YatraSathi account and all associated profile data, trips, itineraries, booking notes, expenses, saved destinations, and achievements. This action cannot be undone and immediately ends all active sessions.
+                </p>
+                <div class="modal-form-group">
+                  <label class="modal-label" for="delete-account-confirm-input">Type <strong>DELETE</strong> to confirm *</label>
+                  <input id="delete-account-confirm-input" type="text" class="modal-input" placeholder="Type DELETE" autocomplete="off">
+                </div>
+                <div id="delete-account-status" role="status" aria-live="polite" style="font-size: 0.8125rem; margin-bottom: 12px;"></div>
+                <button class="btn btn-secondary" id="btn-delete-account" type="button" style="width: 100%; color: var(--color-state-error); border-color: var(--color-state-error);">
+                  Delete My Account Permanently
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             SECTION 9: TRIP REVIEWS (PRIVATE JOURNAL FEED + GOOGLE LINK)
+             ================================================================= -->
+        <section id="section-trip-reviews" class="app-section" aria-labelledby="heading-trip-reviews">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Private Travel Journal</span>
+              <h1 id="heading-trip-reviews" class="section-main-heading">Trip Reviews</h1>
+              <p class="section-subtitle">
+                Record private reflections and small photo memories from your trips. Reviews are private to your account by default.
+              </p>
+            </div>
+            <span class="badge badge-teal">Private by Default</span>
+          </div>
+
+          <div class="dashboard-grid">
+            <div style="display: flex; flex-direction: column; gap: var(--space-lg);">
+              <div class="widget-card">
+                <h2 class="widget-title" id="review-form-heading">Write a Private Trip Review</h2>
+                <form id="form-trip-review" novalidate>
+                  <input type="hidden" id="review-edit-id" value="">
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="review-trip-select">Linked Trip (Optional)</label>
+                    <select id="review-trip-select" class="modal-input">
+                      <option value="">General Travel Review</option>
+                    </select>
+                  </div>
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="review-title">Review Title *</label>
+                    <input id="review-title" type="text" class="modal-input" placeholder="e.g. Sunset at Nahargarh Fort" maxlength="120" required>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="modal-form-group">
+                      <label class="modal-label" for="review-location">Place / City</label>
+                      <input id="review-location" type="text" class="modal-input" placeholder="e.g. Jaipur, Rajasthan" maxlength="120">
+                    </div>
+                    <div class="modal-form-group">
+                      <label class="modal-label" for="review-rating">Rating *</label>
+                      <select id="review-rating" class="modal-input">
+                        <option value="5">5 / 5 — Memorable</option>
+                        <option value="4">4 / 5 — Very Good</option>
+                        <option value="3">3 / 5 — Good</option>
+                        <option value="2">2 / 5 — Fair</option>
+                        <option value="1">1 / 5 — Needs Caution</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="review-body">Your Review *</label>
+                    <textarea id="review-body" class="modal-input" rows="4" placeholder="What stood out, practical tips, or things to remember..." maxlength="2000" required></textarea>
+                  </div>
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="review-photo-input">Optional Photo (JPEG, PNG, or WebP • Max 250 KB)</label>
+                    <input id="review-photo-input" type="file" class="modal-input" accept="image/jpeg,image/png,image/webp">
+                    <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 6px;">
+                      Photos are stored privately in your D1 workspace. Videos, reels, and files over 250 KB are not supported on the free storage tier.
+                    </p>
+                    <div id="review-photo-preview-wrap" style="display: none; margin-top: 10px;">
+                      <img id="review-photo-preview" alt="Selected review photo preview" style="max-width: 100%; max-height: 180px; border-radius: var(--radius-sm); border: 1px solid var(--color-border-subtle); display: block;">
+                      <button type="button" id="btn-remove-review-photo" class="btn btn-secondary" style="margin-top: 6px; min-height: 32px; padding: 4px 10px; font-size: 0.75rem;">Remove Photo</button>
+                    </div>
+                  </div>
+                  <div id="review-form-status" role="status" aria-live="polite" style="font-size: 0.8125rem; margin-bottom: 10px;"></div>
+                  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="submit" id="btn-submit-review" class="btn btn-primary" style="flex: 1;">Save Private Review</button>
+                    <button type="button" id="btn-cancel-review-edit" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="widget-card">
+                <h2 class="widget-title">Share Publicly on Google Maps</h2>
+                <p style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 12px;">
+                  Direct posting or importing of Google reviews is not available in YatraSathi (Google Places / Business Profile APIs do not permit third-party review posting without business verification). You can open Google Maps directly to leave a public review for a place you visited.
+                </p>
+                <a id="link-google-review" href="https://www.google.com/maps/search/?api=1&amp;query=India+Travel" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="width: 100%; justify-content: center;">
+                  Leave a Review on Google Maps ↗
+                </a>
+              </div>
+            </div>
+
+            <div class="widget-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 class="widget-title" style="margin: 0;">Your Private Reviews Feed</h2>
+                <span id="reviews-count-badge" class="badge badge-saffron">0 Reviews</span>
+              </div>
+              <div id="trip-reviews-feed" style="display: flex; flex-direction: column; gap: 16px;"></div>
             </div>
           </div>
         </section>
@@ -1630,11 +1736,29 @@
         <input type="hidden" id="trip-edit-id" value="">
         <div class="modal-form-group">
           <label class="modal-label" for="new-trip-name">Trip Name *</label>
-          <input class="modal-input" type="text" id="new-trip-name" placeholder="e.g. Goa Monsoon Retreat" required>
+          <input class="modal-input" type="text" id="new-trip-name" placeholder="e.g. Jaipur &amp; Jaisalmer Winter Loop" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="modal-form-group">
+            <label class="modal-label" for="new-trip-state">Indian State / UT *</label>
+            <select class="modal-input" id="new-trip-state" required>
+              <option value="rajasthan">Rajasthan</option>
+              <option value="kerala">Kerala</option>
+              <option value="goa">Goa</option>
+              <option value="uttar-pradesh">Uttar Pradesh</option>
+              <option value="ladakh">Ladakh</option>
+            </select>
+          </div>
+          <div class="modal-form-group">
+            <label class="modal-label" for="new-trip-duration">Duration (Days) *</label>
+            <input class="modal-input" type="number" id="new-trip-duration" value="3" min="1" max="30" required>
+          </div>
         </div>
         <div class="modal-form-group">
-          <label class="modal-label" for="new-trip-destination">Destination *</label>
-          <input class="modal-input" type="text" id="new-trip-destination" placeholder="e.g. South Goa & Panaji" required>
+          <span class="modal-label" id="new-trip-places-label">Select Destinations in State (1 or more) *</span>
+          <div class="explore-vibe-chips" id="new-trip-places-group" role="group" aria-labelledby="new-trip-places-label"></div>
+          <div id="new-trip-places-hint" style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 6px;"></div>
+          <input type="hidden" id="new-trip-destination" value="">
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="modal-form-group">
@@ -1656,7 +1780,11 @@
             <input class="modal-input" type="number" id="new-trip-budget" placeholder="e.g. 35000" min="0">
           </div>
         </div>
-        <button class="btn btn-primary" id="btn-submit-trip-form" type="submit" style="width: 100%; margin-top: 12px;">Create Trip Workspace</button>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: 10px; cursor: pointer;">
+          <input type="checkbox" id="new-trip-generate-itinerary" checked>
+          <span>Generate day-by-day itinerary from selected destinations &amp; duration (estimated costs only)</span>
+        </label>
+        <button class="btn btn-primary" id="btn-submit-trip-form" type="submit" style="width: 100%; margin-top: 4px;">Create Trip Workspace</button>
       </form>
     </div>
   </div>
@@ -1818,7 +1946,8 @@
     <span id="toast-message">Action confirmed</span>
   </div>
 
-  <!-- Scripts: Planner Logic (Cloudflare Workers + Better Auth) -->
+  <!-- Scripts: Local Leaflet + Planner Logic (Cloudflare Workers + Better Auth) -->
+  <script src="assets/vendor/leaflet/leaflet.js"></script>
   <script src="js/planner.js"></script>
 </body>
 </html>
