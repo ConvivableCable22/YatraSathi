@@ -25,7 +25,9 @@
 
 - **No RLS in D1 (SQLite):** Because Cloudflare D1 does not support PostgreSQL Row Level Security, **every** trip-, booking-, or user-scoped Worker endpoint must check `sessionUser.id` and membership explicitly in SQL/handler logic.
 - **Parameterized Queries:** Always use `env.DB.prepare(...).bind(...)`. Never interpolate user input into SQL strings.
-- **Secrets Management:** Keep `BETTER_AUTH_SECRET`, `EMAIL_HMAC_SECRET`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN` in Wrangler secrets (`wrangler secret put`) or git-ignored `.dev.vars`. Never commit secrets or ship them to client JS.
+- **Secrets Management:** Keep `BETTER_AUTH_SECRET`, `EMAIL_HMAC_SECRET`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GOOGLE_CLIENT_SECRET`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in Wrangler secrets (`wrangler secret put`) or git-ignored `.dev.vars`. Never commit secrets or ship them to client JS.
+- **OpenStreetMap & Leaflet:** Maps use free OpenStreetMap standard tiles client-side with visible attribution (`© OpenStreetMap contributors`) and require no API keys or billing accounts.
+- **Razorpay Test-Mode Guardrail:** Live keys (`rzp_live_*`) are rejected by `src/integrations.mjs`, signature verification uses HMAC-SHA256 on the Worker (`payment_orders` in D1), and external travel bookings are never marked confirmed by payment events.
 - **Offline Browser Storage:** Cache only read-only non-sensitive trip snapshots (`localStorage`) when explicitly saved offline; clear offline cache on sign-out and never store raw reset/invite tokens or auth secrets in `localStorage`.
 
 ## Known Security & Implementation Gaps

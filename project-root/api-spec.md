@@ -53,7 +53,12 @@ All `/api/workspace/*` routes call `resolveSessionUser(request, env)` (`401` if 
 - `POST /api/workspace/trips/:id/expenses`, `PATCH /api/workspace/trips/:id/expenses/:expenseId`, `DELETE /api/workspace/trips/:id/expenses/:expenseId` — Integer-paise expense CRUD with server-derived `author_name`.
 - `POST /api/workspace/trips/:id/booking-notes` & `DELETE /api/workspace/trips/:id/booking-notes/:noteId` — Personal booking reference notes CRUD.
 
-### 1.6 Local Dev CORS Behavior
+### 1.6 External Integrations & Payment Gate (`src/integrations.mjs`)
+- `GET /api/config/public` — Returns public runtime flags (`mapProvider: "leaflet-openstreetmap"`, `googleSignInEnabled`, `razorpayTestModeOnly`, `razorpayPayableProductDefined`); never returns secrets.
+- Maps & straight-line route previews use free **Leaflet + OpenStreetMap** tiles client-side with zero paid map/route API keys.
+- `GET /api/payments/status`, `POST /api/payments/orders`, `POST /api/payments/verify`, `POST /api/payments/webhook` — Razorpay **test-mode** scaffolding (`rzp_live_*` blocked; order creation returns `501 PRODUCT_UNDECIDED` until a payable YatraSathi SKU is defined in `prd.md`).
+
+### 1.7 Local Dev CORS Behavior
 - When `APP_BASE_URL` starts with `http://127.0.0.1:` or `http://localhost:`, `/api/*` responses allow `Origin` in `{http://127.0.0.1:5500, http://localhost:5500}` with `Access-Control-Allow-Credentials: true`.
 
 ---

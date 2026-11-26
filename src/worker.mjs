@@ -19,6 +19,7 @@ import {
   sha256Hex
 } from './email/dispatcher.mjs';
 import { handleWorkspaceRequest } from './workspace.mjs';
+import { handlePaymentsRequest, handlePublicConfig } from './integrations.mjs';
 import { handleGoogleOtpRequest, interceptGoogleOAuthCallback } from './otp.mjs';
 
 export async function resolveSessionUser(request, env, deps = {}) {
@@ -149,6 +150,15 @@ export default {
         status: 200,
         headers: { 'Content-Type': 'application/json; charset=utf-8' }
       }), corsOrigin);
+    }
+
+    if (url.pathname === '/api/config/public' && request.method === 'GET') {
+      return withCors(handlePublicConfig(env), corsOrigin);
+    }
+
+    if (url.pathname.startsWith('/api/payments/')) {
+      const sessionUser = await resolveSessionUser(request, env);
+      return withCors(await handlePaymentsRequest(request, env, sessionUser), corsOrigin);
     }
 
     if (url.pathname === '/api/auth/forgot-password' && request.method === 'POST') {
