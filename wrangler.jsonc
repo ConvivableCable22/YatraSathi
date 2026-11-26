@@ -1,14 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "yatrasathi-app",
+  "name": "yatrasathi",
   "main": "src/worker.mjs",
   "compatibility_date": "2026-11-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
     "html_handling": "none",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": [
+      "/api/*"
+    ]
   },
   "observability": {
     "enabled": true,
@@ -20,7 +24,7 @@
     {
       "binding": "DB",
       "database_name": "yatrasathi-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "db8da959-c7ee-49f0-80a4-ea84e82873a7",
       "migrations_dir": "migrations"
     }
   ],
@@ -48,7 +52,9 @@
     ]
   },
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": [
+      "*/5 * * * *"
+    ]
   },
   "ratelimits": [
     {
@@ -61,7 +67,7 @@
     }
   ],
   "vars": {
-    "APP_BASE_URL": "https://yatrasathi-app.YOUR_SUBDOMAIN.workers.dev",
+    "APP_BASE_URL": "https://yatrasathi.aceaj.workers.dev",
     "CF_EMAIL_FROM": "",
     "GMAIL_SENDER_ADDRESS": ""
   }
