@@ -189,6 +189,11 @@ export default {
       }), corsOrigin);
     }
 
+    if (url.pathname === '/' && (request.method === 'GET' || request.method === 'HEAD')) {
+      const indexUrl = new URL('/index.html', url);
+      return env.ASSETS.fetch(new Request(indexUrl.toString(), request));
+    }
+
     return env.ASSETS.fetch(request);
   },
 
