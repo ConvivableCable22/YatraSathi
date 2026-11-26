@@ -197,7 +197,8 @@ async function handleBootstrap(sessionUser, env) {
     user: {
       id: userId,
       name: (profileRow && profileRow.display_name) || sessionUser.name || '',
-      email: sessionUser.email || ''
+      email: sessionUser.email || '',
+      emailVerified: Boolean(sessionUser.emailVerified)
     },
     profile: {
       displayName: (profileRow && profileRow.display_name) || sessionUser.name || '',

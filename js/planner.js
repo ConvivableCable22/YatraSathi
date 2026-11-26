@@ -1004,12 +1004,28 @@
     if (!payload || !payload.ok) return;
     state.dataSourceLabel = 'Cloudflare D1';
 
-    if (payload.user) {
+      if (payload.user) {
       state.userDisplayName = payload.user.name || payload.user.email || state.userDisplayName;
+      state.userEmail = payload.user.email || '';
+      state.userEmailVerified = Boolean(payload.user.emailVerified);
       const sidebarName = document.querySelector('.sidebar-user-name');
       if (sidebarName) sidebarName.textContent = state.userDisplayName;
       const profileEmail = document.getElementById('profile-email');
       if (profileEmail && payload.user.email) profileEmail.value = payload.user.email;
+      const verifStatusEl = document.getElementById('profile-verification-status');
+      const btnLinkGoogle = document.getElementById('btn-link-google');
+      if (verifStatusEl) {
+        verifStatusEl.textContent = state.userEmailVerified
+          ? 'Email Status: Verified — you can link your matching Google account below.'
+          : 'Email Status: Unverified — Google account linking is unavailable until your email is verified (email verification is not configured).';
+      }
+      if (btnLinkGoogle) {
+        btnLinkGoogle.disabled = !state.userEmailVerified;
+        btnLinkGoogle.style.display = state.userEmailVerified ? 'inline-flex' : 'none';
+        btnLinkGoogle.title = state.userEmailVerified
+          ? 'Link matching Google account'
+          : 'Unavailable until email is verified';
+      }
     }
 
     if (payload.profile) {
@@ -4154,6 +4170,42 @@
 
       if (typeof window.__yatraRenderDashboard === 'function') window.__yatraRenderDashboard();
     });
+
+    const btnLinkGoogle = document.getElementById('btn-link-google');
+    if (btnLinkGoogle) {
+      btnLinkGoogle.addEventListener('click', async function () {
+        if (!state.isAuthenticated || !state.userEmailVerified) {
+          showStatus(passStatusEl, 'Google account linking is unavailable until your email is verified.', true);
+          return;
+        }
+        if (state.isOffline) {
+          showStatus(passStatusEl, 'Offline Mode: Linking Google requires internet connectivity.', true);
+          return;
+        }
+        btnLinkGoogle.disabled = true;
+        try {
+          const resp = await fetch(getApiBase() + '/api/auth/link-social', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              provider: 'google',
+              callbackURL: '/app.html'
+            })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (resp.ok && data && data.url) {
+            window.location.href = data.url;
+            return;
+          }
+          showStatus(passStatusEl, (data && data.message) || 'Could not start Google account linking.', true);
+        } catch {
+          showStatus(passStatusEl, 'Could not reach Worker auth endpoint.', true);
+        } finally {
+          btnLinkGoogle.disabled = false;
+        }
+      });
+    }
 
     formPassword.addEventListener('submit', async function (e) {
       e.preventDefault();

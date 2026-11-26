@@ -735,6 +735,38 @@ async function recordProviderOutcome(idempotencyKey, leaseToken, outcome, env, d
   return Boolean(res && res.meta && res.meta.changes > 0);
 }
 
+export async function sendTransactionalEmailDirect({ to, subject, text }, env, deps = {}) {
+  const cfFrom = env.CF_EMAIL_FROM || '';
+  const gmailFrom = env.GMAIL_SENDER_ADDRESS || '';
+
+  if (env.EMAIL && cfFrom) {
+    try {
+      const res = await (deps.sendCloudflareEmail || defaultSendCloudflareEmail)(
+        { from: cfFrom, to, subject, text },
+        env
+      );
+      return { ok: true, provider: 'cloudflare', result: res };
+    } catch (cfErr) {
+      if (!(env.GMAIL_CLIENT_ID && env.GMAIL_CLIENT_SECRET && env.GMAIL_REFRESH_TOKEN && gmailFrom)) {
+        throw cfErr;
+      }
+    }
+  }
+
+  if (env.GMAIL_CLIENT_ID && env.GMAIL_CLIENT_SECRET && env.GMAIL_REFRESH_TOKEN && gmailFrom) {
+    const res = await (deps.sendGmailEmail || defaultSendGmailEmail)(
+      { from: gmailFrom, to, subject, text },
+      env,
+      deps
+    );
+    return { ok: true, provider: 'gmail', result: res };
+  }
+
+  const err = new Error('Email delivery provider is not configured (set CF_EMAIL_FROM + EMAIL binding or Gmail OAuth secrets).');
+  err.code = 'EMAIL_PROVIDER_NOT_CONFIGURED';
+  throw err;
+}
+
 async function defaultSendCloudflareEmail(message, env) {
   return env.EMAIL.send({
     from: message.from,

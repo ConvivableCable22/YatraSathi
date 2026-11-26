@@ -440,6 +440,15 @@
     const urlParams = new URLSearchParams(window.location.search);
     const resetTokenFromUrl = urlParams.get('resetToken');
 
+    const authErrorFromUrl = urlParams.get('error');
+    if (authErrorFromUrl && authForm) {
+      openModal('signin');
+      const errMsg = authErrorFromUrl === 'account_not_linked'
+        ? 'An account with this email already exists and is unverified. Google cannot be linked until that email is verified (email verification is currently unavailable because no email sender is configured). Please sign in with your email and password, or use a different Google account.'
+        : `Sign-in could not be completed (${authErrorFromUrl.replace(/_/g, ' ')}). Please try again.`;
+      showFormError(errMsg);
+    }
+
     if (resetTokenFromUrl && resetForm && authForm) {
       openModal('signin');
       authForm.style.display = 'none';
@@ -559,7 +568,8 @@
             credentials: 'include',
             body: JSON.stringify({
               provider: 'google',
-              callbackURL: '/app.html'
+              callbackURL: '/app.html',
+              errorCallbackURL: '/index.html'
             })
           });
           const data = await resp.json().catch(() => ({}));

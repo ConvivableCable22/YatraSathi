@@ -1540,9 +1540,15 @@
                     <input id="profile-confirm-password" type="password" class="modal-input" placeholder="Re-enter new password" minlength="8" autocomplete="new-password">
                   </div>
                   <div id="profile-password-status" role="status" aria-live="polite" style="font-size: 0.8125rem; margin-bottom: 12px;"></div>
+                  <div id="profile-verification-box" style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: 12px; padding: 10px 12px; background: var(--color-surface-muted); border-radius: var(--radius-sm);">
+                    <div id="profile-verification-status">Checking email verification status...</div>
+                  </div>
                   <div style="display: flex; flex-wrap: wrap; gap: 10px;">
                     <button class="btn btn-secondary" id="btn-change-password" type="submit" style="flex: 1;">
                       Update Password
+                    </button>
+                    <button class="btn btn-secondary" id="btn-link-google" type="button" style="flex: 1;">
+                      Link Google Account
                     </button>
                     <button class="btn btn-secondary" id="btn-sign-out" type="button" style="color: var(--color-state-error); border-color: var(--color-state-error);">
                       Sign Out
