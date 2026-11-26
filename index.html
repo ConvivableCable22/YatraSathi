@@ -713,6 +713,17 @@
         <div id="reset-status-msg" role="status" aria-live="polite" style="display: none; font-size: 0.875rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; background: #F0F7F4; color: #1B4332;"></div>
         <button class="btn btn-primary modal-submit-btn" id="btn-complete-reset" type="submit">Update Password</button>
       </form>
+
+      <!-- Google Sign-In Email OTP Verification Panel (?otp=required) -->
+      <form id="google-otp-form" novalidate style="display: none;">
+        <div class="modal-form-group">
+          <label class="modal-label" for="google-otp-code">6-Digit Verification Code</label>
+          <input class="modal-input" type="text" id="google-otp-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="one-time-code" required style="letter-spacing: 0.3em; font-weight: 700; text-align: center; font-size: 1.25rem;">
+        </div>
+        <div id="google-otp-status" role="status" aria-live="polite" style="display: none; font-size: 0.875rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; background: #F0F7F4; color: #1B4332;"></div>
+        <button class="btn btn-primary modal-submit-btn" id="btn-verify-google-otp" type="submit">Verify &amp; Continue to Workspace</button>
+        <button class="btn btn-secondary" id="btn-resend-google-otp" type="button" style="width: 100%; margin-top: 8px;">Resend Code</button>
+      </form>
     </div>
   </div>
 

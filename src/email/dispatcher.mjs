@@ -735,14 +735,14 @@ async function recordProviderOutcome(idempotencyKey, leaseToken, outcome, env, d
   return Boolean(res && res.meta && res.meta.changes > 0);
 }
 
-export async function sendTransactionalEmailDirect({ to, subject, text }, env, deps = {}) {
+export async function sendTransactionalEmailDirect({ to, subject, text, html, inlineImages }, env, deps = {}) {
   const cfFrom = env.CF_EMAIL_FROM || '';
   const gmailFrom = env.GMAIL_SENDER_ADDRESS || '';
 
   if (env.EMAIL && cfFrom) {
     try {
       const res = await (deps.sendCloudflareEmail || defaultSendCloudflareEmail)(
-        { from: cfFrom, to, subject, text },
+        { from: cfFrom, to, subject, text, html, inlineImages },
         env
       );
       return { ok: true, provider: 'cloudflare', result: res };
@@ -754,8 +754,9 @@ export async function sendTransactionalEmailDirect({ to, subject, text }, env, d
   }
 
   if (env.GMAIL_CLIENT_ID && env.GMAIL_CLIENT_SECRET && env.GMAIL_REFRESH_TOKEN && gmailFrom) {
+    const formattedFrom = gmailFrom.includes('<') ? gmailFrom : `YatraSathi <${gmailFrom}>`;
     const res = await (deps.sendGmailEmail || defaultSendGmailEmail)(
-      { from: gmailFrom, to, subject, text },
+      { from: formattedFrom, to, subject, text, html, inlineImages },
       env,
       deps
     );
@@ -798,15 +799,88 @@ async function defaultSendGmailEmail(message, env, deps = {}) {
     throw err;
   }
 
-  const rawMime = [
-    `From: ${message.from}`,
-    `To: ${message.to}`,
-    `Subject: ${message.subject}`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
-    '',
-    message.text
-  ].join('\r\n');
+  const safeSubject = /[^\x20-\x7E]/.test(String(message.subject || ''))
+    ? `=?UTF-8?B?${btoa(String.fromCharCode(...new TextEncoder().encode(String(message.subject))))}?=`
+    : String(message.subject || '');
+
+  let rawMime;
+  const hasInline = Boolean(message.html && Array.isArray(message.inlineImages) && message.inlineImages.length > 0);
+  if (hasInline) {
+    const relBoundary = `ys_rel_${crypto.randomUUID().replace(/-/g, '')}`;
+    const altBoundary = `ys_alt_${crypto.randomUUID().replace(/-/g, '')}`;
+    const parts = [
+      `From: ${message.from}`,
+      `To: ${message.to}`,
+      `Subject: ${safeSubject}`,
+      'MIME-Version: 1.0',
+      `Content-Type: multipart/related; boundary="${relBoundary}"`,
+      '',
+      `--${relBoundary}`,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      '',
+      `--${altBoundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      message.text,
+      '',
+      `--${altBoundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      message.html,
+      '',
+      `--${altBoundary}--`
+    ];
+    for (const img of message.inlineImages) {
+      const wrappedB64 = String(img.base64 || '').replace(/(.{76})/g, '$1\r\n');
+      parts.push(
+        '',
+        `--${relBoundary}`,
+        `Content-Type: ${img.contentType || 'image/png'}; name="${img.filename || 'logo.png'}"`,
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: inline; filename="${img.filename || 'logo.png'}"`,
+        `Content-ID: <${img.cid}>`,
+        '',
+        wrappedB64
+      );
+    }
+    parts.push('', `--${relBoundary}--`);
+    rawMime = parts.join('\r\n');
+  } else if (message.html) {
+    const boundary = `ys_alt_${crypto.randomUUID().replace(/-/g, '')}`;
+    rawMime = [
+      `From: ${message.from}`,
+      `To: ${message.to}`,
+      `Subject: ${safeSubject}`,
+      'MIME-Version: 1.0',
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      message.text,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      message.html,
+      '',
+      `--${boundary}--`
+    ].join('\r\n');
+  } else {
+    rawMime = [
+      `From: ${message.from}`,
+      `To: ${message.to}`,
+      `Subject: ${safeSubject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      message.text
+    ].join('\r\n');
+  }
 
   const sendResp = await fetchImpl('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',

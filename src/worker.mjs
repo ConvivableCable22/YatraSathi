@@ -19,6 +19,7 @@ import {
   sha256Hex
 } from './email/dispatcher.mjs';
 import { handleWorkspaceRequest } from './workspace.mjs';
+import { handleGoogleOtpRequest, interceptGoogleOAuthCallback } from './otp.mjs';
 
 export async function resolveSessionUser(request, env, deps = {}) {
   const getSessionFn = deps.getSession;
@@ -156,6 +157,16 @@ export default {
 
     if (url.pathname === '/api/auth/reset-password' && request.method === 'POST') {
       return withCors(await handleCompletePasswordReset(request, env), corsOrigin);
+    }
+
+    if (url.pathname.startsWith('/api/auth/google-otp/')) {
+      return withCors(await handleGoogleOtpRequest(request, env), corsOrigin);
+    }
+
+    if (url.pathname === '/api/auth/callback/google' && request.method === 'GET') {
+      const auth = createAuth(env, url.origin);
+      const authResp = await auth.handler(request);
+      return withCors(await interceptGoogleOAuthCallback(request, env, authResp), corsOrigin);
     }
 
     if (url.pathname.startsWith('/api/auth/')) {

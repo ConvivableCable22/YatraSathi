@@ -443,10 +443,114 @@
     const authErrorFromUrl = urlParams.get('error');
     if (authErrorFromUrl && authForm) {
       openModal('signin');
-      const errMsg = authErrorFromUrl === 'account_not_linked'
-        ? 'An account with this email already exists and is unverified. Google cannot be linked until that email is verified (email verification is currently unavailable because no email sender is configured). Please sign in with your email and password, or use a different Google account.'
-        : `Sign-in could not be completed (${authErrorFromUrl.replace(/_/g, ' ')}). Please try again.`;
+      let errMsg = `Sign-in could not be completed (${authErrorFromUrl.replace(/_/g, ' ')}). Please try again.`;
+      if (authErrorFromUrl === 'account_not_linked') {
+        errMsg = 'An account with this email already exists and is unverified. Google cannot be linked until that email is verified (email verification is currently unavailable because no email sender is configured). Please sign in with your email and password, or use a different Google account.';
+      } else if (authErrorFromUrl === 'otp_email_unavailable') {
+        errMsg = 'Google sign-in requires an email verification code, but no email sender is configured on the server (missing CF_EMAIL_FROM + EMAIL binding or Gmail OAuth sender). No session was created.';
+      } else if (authErrorFromUrl === 'email_not_verified') {
+        errMsg = 'Your Google account email must be verified before signing in to YatraSathi.';
+      }
       showFormError(errMsg);
+    }
+
+    const otpRequiredFromUrl = urlParams.get('otp') === 'required';
+    const googleOtpForm = document.getElementById('google-otp-form');
+    const googleOtpCodeInput = document.getElementById('google-otp-code');
+    const googleOtpStatusEl = document.getElementById('google-otp-status');
+    const btnVerifyGoogleOtp = document.getElementById('btn-verify-google-otp');
+    const btnResendGoogleOtp = document.getElementById('btn-resend-google-otp');
+
+    if (otpRequiredFromUrl && googleOtpForm && authForm) {
+      openModal('signin');
+      authForm.style.display = 'none';
+      if (forgotForm) forgotForm.style.display = 'none';
+      if (resetForm) resetForm.style.display = 'none';
+      googleOtpForm.style.display = 'block';
+      modalTitle.textContent = 'Enter Verification Code';
+      modalDesc.textContent = 'We sent a 6-digit one-time code to your Google email. It expires in 5 minutes.';
+
+      fetch(getApiBase() + '/api/auth/google-otp/status', { credentials: 'include' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          if (data && data.pending) {
+            modalDesc.textContent = `Enter the 6-digit code sent to ${data.maskedEmail}. Expires in 5 minutes.`;
+          } else if (googleOtpStatusEl) {
+            googleOtpStatusEl.textContent = 'OTP challenge expired or missing. Please click Continue with Google again.';
+            googleOtpStatusEl.style.display = 'block';
+          }
+        })
+        .catch(() => {});
+
+      googleOtpForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const code = googleOtpCodeInput ? googleOtpCodeInput.value.replace(/\s+/g, '') : '';
+        if (!/^\d{6}$/.test(code)) {
+          if (googleOtpStatusEl) {
+            googleOtpStatusEl.textContent = 'Please enter the 6-digit code.';
+            googleOtpStatusEl.style.display = 'block';
+          }
+          return;
+        }
+        if (btnVerifyGoogleOtp) {
+          btnVerifyGoogleOtp.disabled = true;
+          btnVerifyGoogleOtp.textContent = 'Verifying...';
+        }
+        try {
+          const resp = await fetch(getApiBase() + '/api/auth/google-otp/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ code })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (resp.ok && data && data.ok) {
+            window.location.href = data.redirectTo || 'app.html';
+            return;
+          }
+          if (googleOtpStatusEl) {
+            googleOtpStatusEl.textContent = (data && data.message) || 'Verification failed.';
+            googleOtpStatusEl.style.display = 'block';
+          }
+        } catch {
+          if (googleOtpStatusEl) {
+            googleOtpStatusEl.textContent = 'Could not reach verification endpoint.';
+            googleOtpStatusEl.style.display = 'block';
+          }
+        } finally {
+          if (btnVerifyGoogleOtp) {
+            btnVerifyGoogleOtp.disabled = false;
+            btnVerifyGoogleOtp.textContent = 'Verify & Continue to Workspace';
+          }
+        }
+      });
+
+      if (btnResendGoogleOtp) {
+        btnResendGoogleOtp.addEventListener('click', async function () {
+          btnResendGoogleOtp.disabled = true;
+          try {
+            const resp = await fetch(getApiBase() + '/api/auth/google-otp/resend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include'
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (googleOtpStatusEl) {
+              googleOtpStatusEl.textContent = resp.ok
+                ? `A new 6-digit code was sent to ${data.maskedEmail || 'your email'}. Previous codes are now invalid.`
+                : ((data && data.message) || 'Could not resend code.');
+              googleOtpStatusEl.style.display = 'block';
+            }
+          } catch {
+            if (googleOtpStatusEl) {
+              googleOtpStatusEl.textContent = 'Could not reach resend endpoint.';
+              googleOtpStatusEl.style.display = 'block';
+            }
+          } finally {
+            btnResendGoogleOtp.disabled = false;
+          }
+        });
+      }
     }
 
     if (resetTokenFromUrl && resetForm && authForm) {
