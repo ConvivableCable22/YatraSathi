@@ -592,6 +592,35 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
   }
 
   const tripMatch = path.match(/^\/api\/workspace\/trips\/([^/]+)$/);
+  if (tripMatch && method === 'DELETE') {
+    const tripId = decodeURIComponent(tripMatch[1]);
+    const membership = await getTripMembership(db, tripId, userId);
+    if (!membership || membership.role !== 'owner') {
+      return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Only the trip owner can delete this trip.' }, 403);
+    }
+
+    try {
+      const delResults = await db.batch([
+        db.prepare(`DELETE FROM itinerary_items WHERE trip_id = ?`).bind(tripId),
+        db.prepare(`DELETE FROM expenses WHERE trip_id = ?`).bind(tripId),
+        db.prepare(`DELETE FROM booking_notes WHERE trip_id = ?`).bind(tripId),
+        db.prepare(`DELETE FROM activity_events WHERE trip_id = ? AND user_id = ?`).bind(tripId, userId),
+        db.prepare(`UPDATE trip_reviews SET trip_id = NULL WHERE trip_id = ? AND user_id = ?`).bind(tripId, userId),
+        db.prepare(`DELETE FROM bookings WHERE trip_id = ? AND user_id = ?`).bind(tripId, userId),
+        db.prepare(`DELETE FROM trip_members WHERE trip_id = ?`).bind(tripId),
+        db.prepare(`DELETE FROM trips WHERE id = ? AND owner_id = ?`).bind(tripId, userId)
+      ]);
+      const tripDel = delResults[delResults.length - 1];
+      if (!tripDel?.meta?.changes) {
+        return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Trip not found.' }, 404);
+      }
+    } catch {
+      return jsonResponse({ ok: false, code: 'TRIP_DELETE_FAILED', message: 'Could not delete trip due to a database error.' }, 500);
+    }
+
+    return jsonResponse({ ok: true, deletedTripId: tripId });
+  }
+
   if (tripMatch && method === 'PATCH') {
     const tripId = decodeURIComponent(tripMatch[1]);
     const membership = await getTripMembership(db, tripId, userId);

@@ -205,6 +205,10 @@ test('Cross-account data isolation: User B cannot read or mutate User A records'
       await apiJson(`/api/workspace/trips/${encodeURIComponent(tripA)}/booking-notes/${encodeURIComponent(noteA)}`, {
         method: 'DELETE',
         cookie: userB.cookie
+      }),
+      await apiJson(`/api/workspace/trips/${encodeURIComponent(tripA)}`, {
+        method: 'DELETE',
+        cookie: userB.cookie
       })
     ];
 
@@ -244,6 +248,21 @@ test('Cross-account data isolation: User B cannot read or mutate User A records'
       body: { name: 'Beta Safe Trip', destination: 'Kochi', budget: 30000 }
     });
     assert.equal(tripBRes.status, 201);
+
+    // 7b. Owner A deletes their own trip and its associated records
+    const delTripA = await apiJson(`/api/workspace/trips/${encodeURIComponent(tripA)}`, {
+      method: 'DELETE',
+      cookie: userA.cookie
+    });
+    assert.equal(delTripA.status, 200);
+    assert.equal(delTripA.data.deletedTripId, tripA);
+
+    const afterTripDelBootA = await apiJson('/api/workspace/bootstrap', { cookie: userA.cookie });
+    assert.equal(afterTripDelBootA.status, 200);
+    assert.deepEqual(afterTripDelBootA.data.trips, []);
+    assert.deepEqual(afterTripDelBootA.data.itineraryItems, []);
+    assert.deepEqual(afterTripDelBootA.data.expenses, []);
+    assert.deepEqual(afterTripDelBootA.data.bookingNotes, []);
 
     // 8. User A deletes their own account; active session must be revoked immediately
     const delA = await apiJson('/api/workspace/account', {

@@ -2902,6 +2902,7 @@
     const btnDetailEdit = document.getElementById('btn-detail-edit');
     const btnDetailMap = document.getElementById('btn-detail-map');
     const btnDetailArchive = document.getElementById('btn-detail-archive');
+    const btnDetailDelete = document.getElementById('btn-detail-delete');
 
     if (!tripsContainer || !detailPanelEl) return;
 
@@ -2969,6 +2970,10 @@
 
       if (btnDetailArchive) {
         btnDetailArchive.textContent = status === 'archived' ? 'Restore Trip' : 'Archive Trip';
+      }
+      if (btnDetailDelete) {
+        const isOwner = !trip.role || String(trip.role).toLowerCase() === 'owner';
+        btnDetailDelete.style.display = isOwner ? 'inline-flex' : 'none';
       }
 
       if (!detailContentEl) return;
@@ -3119,6 +3124,63 @@
         renderMyTrips();
       });
     });
+
+    if (btnDetailDelete) {
+      btnDetailDelete.addEventListener('click', async function () {
+        if (state.isOffline) {
+          showToast('Offline Mode: Deleting a trip requires internet connectivity.');
+          return;
+        }
+        const trip = state.trips.find(t => t.id === state.activeTripId);
+        if (!trip) return;
+        const confirmed = confirm(
+          `Permanently delete "${trip.name}"?\n\nThis will permanently remove its itinerary, stops, booking notes, expenses, and trip-specific activity. This action cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        btnDetailDelete.disabled = true;
+        try {
+          if (state.isAuthenticated) {
+            await apiFetch(`/api/workspace/trips/${encodeURIComponent(trip.id)}`, { method: 'DELETE' });
+          }
+
+          state.trips = state.trips.filter(t => t.id !== trip.id);
+          state.itineraryItems = (state.itineraryItems || []).filter(it => it.tripId !== trip.id);
+          state.bookingNotes = (state.bookingNotes || []).filter(b => b.tripId !== trip.id);
+          state.recentActivity = (state.recentActivity || []).filter(a => a.tripId !== trip.id);
+          state.reviews = (state.reviews || []).map(r => (r.tripId === trip.id ? Object.assign({}, r, { tripId: null }) : r));
+
+          try {
+            localStorage.removeItem(scopedStorageKey(`offline_${trip.id}`));
+            localStorage.removeItem(scopedStorageKey(`route_${trip.id}`));
+          } catch {
+            // Ignore storage errors
+          }
+
+          if (typeof window.__yatraRemoveTripExpenses === 'function') {
+            window.__yatraRemoveTripExpenses(trip.id);
+          }
+
+          const nextTrip = state.trips[0] || null;
+          state.activeTripId = nextTrip ? nextTrip.id : null;
+          if (nextTrip) {
+            syncActiveTripUI(nextTrip.id);
+          } else {
+            renderActiveTripItineraryList(null);
+          }
+
+          renderMyTrips();
+          if (typeof window.__yatraRenderDashboard === 'function') window.__yatraRenderDashboard();
+          if (typeof window.__yatraRenderAchievements === 'function') window.__yatraRenderAchievements();
+          if (typeof window.__yatraRenderReviews === 'function') window.__yatraRenderReviews();
+          showToast(`Deleted "${trip.name}" and its associated records.`);
+        } catch (err) {
+          showToast(err.message || 'Could not delete trip. Your trip was preserved.');
+        } finally {
+          btnDetailDelete.disabled = false;
+        }
+      });
+    }
 
     detailTabs.forEach(tab => {
       tab.addEventListener('click', function () {
@@ -4151,6 +4213,10 @@
 
     window.__yatraSetExpenses = function (items) {
       expensesState.items = Array.isArray(items) ? items : [];
+      renderExpensesSection();
+    };
+    window.__yatraRemoveTripExpenses = function (tripId) {
+      expensesState.items = expensesState.items.filter(e => e.tripId !== tripId);
       renderExpensesSection();
     };
 
