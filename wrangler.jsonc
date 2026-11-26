@@ -67,9 +67,9 @@
       }
     }
   ],
+  "keep_vars": true,
   "vars": {
     "APP_BASE_URL": "https://yatrasathi.aceaj.workers.dev",
-    "CF_EMAIL_FROM": "",
-    "GMAIL_SENDER_ADDRESS": ""
+    "CF_EMAIL_FROM": ""
   }
 }
