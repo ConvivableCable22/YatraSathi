@@ -1,0 +1,11 @@
+# URL Rewrites and Clean Redirects for YatraSathi Static Hosting
+# Compatible with Cloudflare Pages and Netlify
+
+# Clean paths for signed-in app
+/app        /app.html       200
+/workspace  /app.html       200
+/planner    /app.html       200
+
+# Auth entry points
+/login      /index.html     200
+/signup     /index.html     200

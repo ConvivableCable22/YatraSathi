@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YatraSathi — Trip Planning Workspace</title>
+  <meta name="description" content="Signed-in trip-planning workspace for YatraSathi: Explore India, My Trips, Itinerary Builder, Maps & Routes, Bookings, Expenses, Achievements, and Profile.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="app-body">
+  <!-- Skip navigation link for keyboard screen-reader users -->
+  <a href="#app-main-content" class="skip-link">Skip to main workspace content</a>
+
+  <!-- Mobile Drawer Backdrop Overlay -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <!-- =========================================================================
+         PERSISTENT SIDEBAR NAVIGATION (Desktop & Mobile Drawer)
+         Navigation Order & Labels:
+         1. Explore India
+         2. My Trips
+         3. Itinerary Builder
+         4. Maps & Routes
+         5. Bookings
+         6. Expenses
+         7. Achievements
+         8. Profile & Settings
+         ========================================================================= -->
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Application Navigation">
+      <!-- Sidebar Header / Brand -->
+      <div class="sidebar-header">
+        <a href="index.html" class="brand-logo" title="Back to YatraSathi Home">
+          <div class="brand-icon" aria-hidden="true">YS</div>
+          <div class="brand-text">
+            <span class="brand-name">YatraSathi</span>
+            <span class="brand-tagline-sub">Trip Workspace</span>
+          </div>
+        </a>
+        <button class="sidebar-close-btn" id="sidebar-close-btn" type="button" aria-label="Close navigation sidebar">×</button>
+      </div>
+
+      <!-- Active Trip Context Card -->
+      <div class="sidebar-trip-context" id="sidebar-active-trip-box" title="Currently active trip plan">
+        <div class="sidebar-context-label">Active Trip Context</div>
+        <div class="sidebar-context-title" id="sidebar-active-trip-name">Rajasthan Heritage Loop</div>
+        <div class="sidebar-context-meta" id="sidebar-active-trip-meta">Jaipur & Jodhpur • Nov 28 – Dec 02</div>
+      </div>
+
+      <!-- Main Navigation Menu -->
+      <nav class="sidebar-nav" aria-label="Trip planning sections">
+        <ul class="sidebar-menu">
+          <li>
+            <button class="sidebar-nav-item active" data-section="dashboard" type="button" aria-current="page">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <span>Dashboard</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="explore-india" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+              <span>1. Explore India</span>
+              <span class="sidebar-badge-pill" id="sidebar-saved-dest-badge">5 Curated</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="my-trips" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              <span>2. My Trips</span>
+              <span class="sidebar-badge-count" id="sidebar-trips-count">2</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="itinerary-builder" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              <span>3. Itinerary Builder</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="maps-routes" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg>
+              <span>4. Maps & Routes</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="bookings" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+              <span>5. Bookings</span>
+              <span class="sidebar-badge-count">2 Notes</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="expenses" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+              <span>6. Expenses</span>
+              <span class="sidebar-badge-paise">₹ Safe</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="achievements" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              <span>7. Achievements</span>
+              <span class="sidebar-badge-pill" style="background: var(--color-brand-saffron); color: var(--color-brand-ink);">75%</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-nav-item" data-section="profile-settings" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>8. Profile & Settings</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Sidebar Footer User Card -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user-card">
+          <div class="user-avatar" title="Signed in as Arnav (Owner)">AS</div>
+          <div class="sidebar-user-info">
+            <span class="sidebar-user-name">Arnav Sharma</span>
+            <span class="sidebar-user-role">Trip Owner</span>
+          </div>
+          <button class="sidebar-quick-btn" id="btn-sidebar-create" type="button" title="Create New Trip">+</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Container -->
+    <div class="app-main">
+      <!-- Mobile Top App Bar (Visible on mobile viewports) -->
+      <header class="mobile-top-bar" aria-label="Mobile top bar">
+        <button class="mobile-hamburger-btn" id="mobile-sidebar-toggle" type="button" aria-label="Open navigation sidebar" aria-expanded="false" aria-controls="app-sidebar">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="mobile-top-brand">
+          <span class="brand-name">YatraSathi</span>
+        </div>
+        <button class="btn btn-primary" id="btn-mobile-new-trip" type="button" style="padding: 4px 10px; font-size: 0.75rem; min-height: 32px;">
+          + New Trip
+        </button>
+      </header>
+
+      <!-- Environment & Simulation Bar -->
+      <aside class="prototype-status-bar" aria-label="Environment and simulation bar">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="prototype-tag" id="backend-status-tag">Cloudflare Workers + D1</span>
+          <span id="backend-status-desc">Checking verified Better Auth session...</span>
+        </div>
+        <div class="prototype-controls">
+          <span class="state-selector-label">Simulate UI State:</span>
+          <select id="state-simulator-select" class="state-select" aria-label="Simulate UI state">
+            <option value="normal">Normal (Interactive Trips)</option>
+            <option value="loading">Loading Skeletons</option>
+            <option value="empty">Empty Workspace</option>
+            <option value="offline">Offline (Read-Only Mode)</option>
+            <option value="error">Network / Authorization Error</option>
+          </select>
+        </div>
+      </aside>
+
+      <!-- Offline Read-Only Banner -->
+      <div id="offline-banner" class="offline-status-banner" role="status" aria-live="polite">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+        <span><strong>Read-Only Offline View:</strong> You are viewing saved trip essentials. Adding or editing items requires internet connectivity.</span>
+      </div>
+
+      <!-- Simulated Error Alert -->
+      <div id="simulated-error-banner" class="error-alert-box" style="display: none;" role="alert">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span><strong>Access Restricted or Synchronization Failed:</strong> You do not have collaborator permissions for this trip ID, or your network dropped.</span>
+        </div>
+        <button class="btn btn-secondary" id="btn-retry-error" style="padding: 4px 12px; min-height: 32px; font-size: 0.8125rem;">Retry Request</button>
+      </div>
+
+      <!-- MAIN APP CONTENT PANELS -->
+      <main class="app-main-content" id="app-main-content">
+
+        <!-- =========================================================================
+             DASHBOARD OVERVIEW
+             ========================================================================= -->
+        <section id="section-dashboard" class="app-section active" aria-labelledby="heading-dashboard">
+          <div class="section-header-row dash-header-row">
+            <div class="dash-header-intro">
+              <span class="section-label">Traveler Overview</span>
+              <h1 id="heading-dashboard" class="section-main-heading">
+                <span id="dash-greeting-text">Good Morning, Arnav</span>
+              </h1>
+              <p class="section-subtitle" id="dash-greeting-sub">
+                Where shall we plan your next India journey?
+              </p>
+            </div>
+            <div class="dash-topbar-controls">
+              <form id="dash-dest-search-form" class="dash-search-form" role="search" aria-label="Search destinations">
+                <label class="skip-link" for="dash-dest-search-input">Search destinations</label>
+                <input id="dash-dest-search-input" class="dash-search-input" type="search" placeholder="Search destinations...">
+                <button class="dash-search-submit" type="submit" aria-label="Search destinations in Explore India">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </button>
+              </form>
+              <div class="dash-notif-wrap">
+                <button class="dash-icon-btn" id="btn-dash-notifications" type="button" aria-label="Workspace notifications" aria-expanded="false" aria-controls="dash-notif-popover">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  <span class="dash-notif-badge" id="dash-notif-count" aria-hidden="true">0</span>
+                </button>
+                <div id="dash-notif-popover" class="dash-notif-popover" role="region" aria-label="Recent notifications" hidden>
+                  <div class="dash-notif-header">Workspace Updates</div>
+                  <ul id="dash-notif-list" class="dash-notif-list"></ul>
+                </div>
+              </div>
+              <button class="dash-profile-btn" id="btn-dash-profile" type="button" aria-label="Open Profile and Settings">
+                <span class="dash-profile-avatar" id="dash-user-avatar" aria-hidden="true">AS</span>
+              </button>
+              <button class="btn btn-primary" id="btn-dash-new-trip" type="button">+ New Trip</button>
+            </div>
+          </div>
+
+          <!-- Full-Width Travel Stats Strip -->
+          <section class="widget-card dash-stats-card dash-stats-strip" id="dash-stats-panel" aria-labelledby="heading-travel-stats" aria-live="polite">
+            <div class="dash-card-header" style="margin-bottom: var(--space-sm);">
+              <h2 id="heading-travel-stats" class="dash-stats-eyebrow">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                <span>Your Travel Stats</span>
+              </h2>
+              <span class="dash-data-source-pill" id="dash-source-badge">Live Workspace Data</span>
+            </div>
+            <div class="dash-stats-body">
+              <div class="dash-stats-row">
+                <div class="dash-stat-box">
+                  <div class="dash-stat-top">
+                    <div class="dash-stat-icon dash-stat-icon-teal" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    </div>
+                    <div class="dash-stat-val" id="dash-stat-trips">0</div>
+                  </div>
+                  <div class="dash-stat-copy">
+                    <div class="dash-stat-label">Trips Planned</div>
+                    <div class="dash-stat-cap" id="dash-stat-trips-cap">Active blueprints</div>
+                  </div>
+                </div>
+                <div class="dash-stat-box">
+                  <div class="dash-stat-top">
+                    <div class="dash-stat-icon dash-stat-icon-saffron" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </div>
+                    <div class="dash-stat-val" id="dash-stat-xp">0 XP</div>
+                  </div>
+                  <div class="dash-stat-copy">
+                    <div class="dash-stat-label">Total XP</div>
+                    <div class="dash-stat-cap" id="dash-stat-xp-cap">Earned from actions</div>
+                  </div>
+                </div>
+                <div class="dash-stat-box">
+                  <div class="dash-stat-top">
+                    <div class="dash-stat-icon dash-stat-icon-coral" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+                    </div>
+                    <div class="dash-stat-val" id="dash-stat-badges">0</div>
+                  </div>
+                  <div class="dash-stat-copy">
+                    <div class="dash-stat-label">Badges Earned</div>
+                    <div class="dash-stat-cap" id="dash-stat-badges-cap">Of 6 unlocked</div>
+                  </div>
+                </div>
+              </div>
+              <blockquote class="dash-stats-quote">
+                <p>“Collect moments, not things.”</p>
+              </blockquote>
+            </div>
+          </section>
+
+          <!-- Main Two-Column Workspace: Primary Planning Flow + Supporting Context -->
+          <div class="dash-workspace-grid">
+            <div class="dash-primary-col">
+              <div class="widget-card dash-continue-card" id="dash-continue-card">
+                <!-- Populated dynamically by js/planner.js -->
+              </div>
+
+              <div class="widget-card">
+                <div class="dash-card-header">
+                  <h2 class="widget-title" style="margin-bottom: 0;">Upcoming Trips</h2>
+                  <button class="dash-link-btn" data-jump-section="my-trips" type="button">View All Trips →</button>
+                </div>
+                <div id="dash-upcoming-trips-list" class="dash-upcoming-list">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+
+              <div class="widget-card">
+                <div class="dash-card-header">
+                  <h2 class="widget-title" style="margin-bottom: 0;">Recommended Destinations</h2>
+                  <button class="dash-link-btn" data-jump-section="explore-india" type="button">See More →</button>
+                </div>
+                <div id="dash-recommended-grid" class="dash-recommended-grid">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+            </div>
+
+            <div class="dash-secondary-col">
+              <div class="widget-card">
+                <div class="dash-card-header">
+                  <h2 class="widget-title" style="margin-bottom: 0;">Your Progress</h2>
+                  <button class="dash-link-btn" data-jump-section="achievements" type="button">Achievements →</button>
+                </div>
+                <div id="dash-progress-body" class="dash-progress-body">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+
+              <div class="widget-card">
+                <h2 class="widget-title">Quick Actions</h2>
+                <div class="dash-quick-links-grid">
+                  <button class="dash-quick-tile" id="btn-dash-quick-plan" type="button">
+                    <span class="dash-tile-title">Plan a Trip</span>
+                    <span class="dash-tile-sub">Create blueprint</span>
+                  </button>
+                  <button class="dash-quick-tile" data-jump-section="explore-india" type="button">
+                    <span class="dash-tile-title">Explore India</span>
+                    <span class="dash-tile-sub">Browse places</span>
+                  </button>
+                  <button class="dash-quick-tile" data-jump-section="itinerary-builder" type="button">
+                    <span class="dash-tile-title">Itinerary</span>
+                    <span class="dash-tile-sub">Build daily plan</span>
+                  </button>
+                  <button class="dash-quick-tile" data-jump-section="maps-routes" type="button">
+                    <span class="dash-tile-title">Maps &amp; Routes</span>
+                    <span class="dash-tile-sub">Stop sequence</span>
+                  </button>
+                  <button class="dash-quick-tile" data-jump-section="bookings" type="button">
+                    <span class="dash-tile-title">Bookings</span>
+                    <span class="dash-tile-sub">Reference notes</span>
+                  </button>
+                  <button class="dash-quick-tile" data-jump-section="expenses" type="button">
+                    <span class="dash-tile-title">Expenses</span>
+                    <span class="dash-tile-sub">INR budget log</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="widget-card">
+                <div class="dash-card-header">
+                  <h2 class="widget-title" style="margin-bottom: 0;">Recent Activity</h2>
+                  <button class="dash-link-btn" data-jump-section="my-trips" type="button">Trips →</button>
+                </div>
+                <ul id="dash-recent-activity-list" class="dash-activity-list">
+                  <!-- Populated dynamically by js/planner.js -->
+                </ul>
+              </div>
+
+              <div class="widget-card dash-tip-card" id="dash-travel-tip-card">
+                <div class="dash-card-header" style="margin-bottom: var(--space-xs);">
+                  <h2 class="widget-title" style="margin-bottom: 0;">Travel Tip</h2>
+                  <span class="dash-data-source-pill">Planning Note</span>
+                </div>
+                <p id="dash-travel-tip-text" style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: var(--space-sm);">
+                  Keep estimated route costs separate from actual INR expenses as you finalize stops.
+                </p>
+                <button class="btn btn-secondary" id="btn-dash-tip-explore" type="button" style="min-height: 36px; padding: 6px 12px; font-size: 0.8125rem;">
+                  Explore More →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Planning Call-to-Action Banner -->
+          <div class="dash-cta-banner">
+            <div>
+              <h2 class="dash-cta-title">Dream it. Plan it. Live it.</h2>
+              <p class="dash-cta-sub">Your next India adventure awaits—start a private trip blueprint in seconds.</p>
+            </div>
+            <button class="btn btn-primary" id="btn-dash-cta-start" type="button">Start Planning →</button>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 1: EXPLORE INDIA
+             ========================================================================= -->
+        <section id="section-explore-india" class="app-section" aria-labelledby="heading-explore-india">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Indian Destination Discovery</span>
+              <h1 id="heading-explore-india" class="section-main-heading">Explore India</h1>
+              <p class="section-subtitle">
+                Find verified destinations across India, recommended seasons, travel durations, and start a trip in one click.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="discover-search-input" placeholder="Search state, city, or interest..." aria-label="Search destinations by state or city" class="search-input-pill">
+            </div>
+          </div>
+
+          <!-- Sub-Tabs: All Curated vs Saved -->
+          <div class="trips-section-tabs">
+            <button class="trip-filter-tab active" id="tab-discover-all" type="button">All Curated (5)</button>
+            <button class="trip-filter-tab" id="tab-discover-saved" type="button">Saved Destinations (<span id="saved-dest-count">0</span>)</button>
+          </div>
+
+          <!-- Travel Vibe / Interest Chips + Category, Distance, Sort & Trip Target -->
+          <div class="explore-controls-bar" aria-label="Filter and sort destinations and places">
+            <div class="explore-vibe-chips" role="group" aria-label="Filter by travel interest or vibe">
+              <button class="explore-vibe-chip active" data-vibe="all" type="button" aria-pressed="true">All Vibes</button>
+              <button class="explore-vibe-chip" data-vibe="heritage" type="button" aria-pressed="false">Culture &amp; Heritage</button>
+              <button class="explore-vibe-chip" data-vibe="nature" type="button" aria-pressed="false">Nature &amp; Hills</button>
+              <button class="explore-vibe-chip" data-vibe="coastal" type="button" aria-pressed="false">Beaches &amp; Coast</button>
+              <button class="explore-vibe-chip" data-vibe="spiritual" type="button" aria-pressed="false">Spiritual &amp; Ghats</button>
+            </div>
+            <div class="explore-select-row">
+              <div class="explore-select-group">
+                <label class="explore-filter-label" for="explore-filter-category">Category</label>
+                <select id="explore-filter-category" class="modal-input explore-compact-select">
+                  <option value="all">All Categories</option>
+                  <option value="fort-palace">Forts &amp; Palaces</option>
+                  <option value="nature">Nature &amp; Viewpoints</option>
+                  <option value="beach-water">Beaches &amp; Backwaters</option>
+                  <option value="market-culture">Markets &amp; Ghats</option>
+                </select>
+              </div>
+              <div class="explore-select-group">
+                <label class="explore-filter-label" for="explore-filter-distance">Distance</label>
+                <select id="explore-filter-distance" class="modal-input explore-compact-select">
+                  <option value="all">Any Distance</option>
+                  <option value="5">Within 5 km (est.)</option>
+                  <option value="15">Within 15 km (est.)</option>
+                  <option value="16">15+ km (est.)</option>
+                </select>
+              </div>
+              <div class="explore-select-group">
+                <label class="explore-filter-label" for="explore-sort-select">Sort By</label>
+                <select id="explore-sort-select" class="modal-input explore-compact-select">
+                  <option value="recommended">Recommended</option>
+                  <option value="distance-asc">Nearest First (est.)</option>
+                  <option value="rating-desc">Highest Rated</option>
+                </select>
+              </div>
+              <div class="explore-select-group">
+                <label class="explore-filter-label" for="explore-target-trip">Active Trip</label>
+                <select id="explore-target-trip" class="modal-input explore-compact-select">
+                  <!-- Populated dynamically by js/planner.js -->
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State for No Matching Destinations -->
+          <div id="explore-dest-empty" class="empty-state-card" style="display: none;">
+            <h3 class="empty-state-title">No matching destinations found</h3>
+            <p class="empty-state-desc">Try clearing your search or choosing another travel vibe to browse all India destinations.</p>
+            <button class="btn btn-secondary" id="btn-reset-explore-filters" type="button">Reset Filters</button>
+          </div>
+
+          <!-- Saved Destinations Empty State -->
+          <div id="discover-saved-empty" class="empty-state-card" style="display: none;">
+            <div class="empty-state-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <h3 class="empty-state-title">No saved destinations yet</h3>
+            <p class="empty-state-desc">
+              Click "Save Destination" on any card below to bookmark places for your upcoming journeys.
+            </p>
+          </div>
+
+          <!-- Curated Destinations Grid -->
+          <div class="destinations-grid" id="discover-cards-grid">
+            <!-- Discovery Card 1: Rajasthan -->
+            <article class="destination-card dest-card-rajasthan" data-dest-id="dest-rajasthan">
+              <div class="dest-visual-header">
+                <span class="dest-badge-region">North India</span>
+                <span class="dest-duration-pill">4–5 Days Suggested</span>
+              </div>
+              <div class="dest-body">
+                <h3 class="dest-name">Jaipur & Jodhpur</h3>
+                <div class="dest-state">Rajasthan • Best Season: Oct – Mar</div>
+                <p class="dest-description">
+                  Hilltop forts, royal palaces, craft markets, and desert sunsets. Perfect for culture, heritage, and photography.
+                </p>
+                <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+                  <button class="btn btn-primary btn-plan-from-dest" data-dest="Jaipur & Jodhpur" data-theme="rajasthan" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Plan Trip Here</button>
+                  <button class="btn btn-secondary btn-save-dest" data-dest-id="dest-rajasthan" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Save Destination</button>
+                  <button class="btn btn-secondary btn-dest-details" data-dest-id="dest-rajasthan" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Details</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- Discovery Card 2: Kerala -->
+            <article class="destination-card dest-card-kerala" data-dest-id="dest-kerala">
+              <div class="dest-visual-header">
+                <span class="dest-badge-region">South India</span>
+                <span class="dest-duration-pill">5–6 Days Suggested</span>
+              </div>
+              <div class="dest-body">
+                <h3 class="dest-name">Munnar & Alleppey</h3>
+                <div class="dest-state">Kerala • Best Season: Sep – Mar</div>
+                <p class="dest-description">
+                  Rolling tea plantations, tranquil backwater houseboats, spice gardens, and gentle coastal breezes.
+                </p>
+                <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+                  <button class="btn btn-primary btn-plan-from-dest" data-dest="Munnar & Alleppey" data-theme="kerala" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Plan Trip Here</button>
+                  <button class="btn btn-secondary btn-save-dest" data-dest-id="dest-kerala" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Save Destination</button>
+                  <button class="btn btn-secondary btn-dest-details" data-dest-id="dest-kerala" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Details</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- Discovery Card 3: Ladakh -->
+            <article class="destination-card dest-card-ladakh" data-dest-id="dest-ladakh">
+              <div class="dest-visual-header">
+                <span class="dest-badge-region">High Altitude</span>
+                <span class="dest-duration-pill">6–7 Days Suggested</span>
+              </div>
+              <div class="dest-body">
+                <h3 class="dest-name">Leh & Nubra Valley</h3>
+                <div class="dest-state">Ladakh • Best Season: May – Sep</div>
+                <p class="dest-description">
+                  Stark high-altitude landscapes, ancient Tibetan monasteries, sand dunes, and crystal-clear night skies.
+                </p>
+                <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+                  <button class="btn btn-primary btn-plan-from-dest" data-dest="Leh & Nubra Valley" data-theme="ladakh" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Plan Trip Here</button>
+                  <button class="btn btn-secondary btn-save-dest" data-dest-id="dest-ladakh" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Save Destination</button>
+                  <button class="btn btn-secondary btn-dest-details" data-dest-id="dest-ladakh" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Details</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- Discovery Card 4: Varanasi -->
+            <article class="destination-card dest-card-varanasi" data-dest-id="dest-varanasi">
+              <div class="dest-visual-header">
+                <span class="dest-badge-region">Heritage & Spiritual</span>
+                <span class="dest-duration-pill">2–3 Days Suggested</span>
+              </div>
+              <div class="dest-body">
+                <h3 class="dest-name">Varanasi</h3>
+                <div class="dest-state">Uttar Pradesh • Best Season: Oct – Mar</div>
+                <p class="dest-description">
+                  Ancient river ghats along the sacred Ganga, mesmerizing evening aarti ceremonies, and heritage culinary trails.
+                </p>
+                <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+                  <button class="btn btn-primary btn-plan-from-dest" data-dest="Varanasi" data-theme="varanasi" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Plan Trip Here</button>
+                  <button class="btn btn-secondary btn-save-dest" data-dest-id="dest-varanasi" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Save Destination</button>
+                  <button class="btn btn-secondary btn-dest-details" data-dest-id="dest-varanasi" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Details</button>
+                </div>
+              </div>
+            </article>
+
+            <!-- Discovery Card 5: Goa -->
+            <article class="destination-card dest-card-goa" data-dest-id="dest-goa">
+              <div class="dest-visual-header">
+                <span class="dest-badge-region">Coastal West</span>
+                <span class="dest-duration-pill">4–5 Days Suggested</span>
+              </div>
+              <div class="dest-body">
+                <h3 class="dest-name">South Goa & Panaji</h3>
+                <div class="dest-state">Goa • Best Season: Nov – Feb</div>
+                <p class="dest-description">
+                  Tranquil coconut groves, colorful Portuguese heritage quarters, spice plantations, and historic baroque churches.
+                </p>
+                <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+                  <button class="btn btn-primary btn-plan-from-dest" data-dest="South Goa & Panaji" data-theme="goa" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Plan Trip Here</button>
+                  <button class="btn btn-secondary btn-save-dest" data-dest-id="dest-goa" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Save Destination</button>
+                  <button class="btn btn-secondary btn-dest-details" data-dest-id="dest-goa" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">Details</button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <!-- Places Explorer & Synced Route Map -->
+          <div class="explore-places-shell" id="explore-places-shell">
+            <div class="explore-places-header">
+              <div>
+                <h2 class="itinerary-sub-heading">Explore Places &amp; Build Your Stops</h2>
+                <p class="itinerary-sub-caption">Filter places by vibe, category, or estimated distance and add them directly to your selected trip.</p>
+              </div>
+              <span class="dash-data-source-pill" id="explore-places-count-pill">0 Places</span>
+            </div>
+
+            <div class="explore-places-grid">
+              <!-- Places List (Full Width) -->
+              <div class="explore-places-col">
+                <div id="explore-places-list" class="explore-places-list" aria-live="polite">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+                <div id="explore-places-empty" class="empty-state-card" style="display: none; margin: 0;">
+                  <h3 class="empty-state-title">No places match these filters</h3>
+                  <p class="empty-state-desc">Adjust your search, category, or distance filter to see more stops.</p>
+                  <button class="btn btn-secondary" id="btn-reset-places-filters" type="button">Reset All Filters</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 2: MY TRIPS
+             ========================================================================= -->
+        <section id="section-my-trips" class="app-section" aria-labelledby="heading-my-trips">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Traveler Workspace</span>
+              <h1 id="heading-my-trips" class="section-main-heading">My Trips</h1>
+              <p class="section-subtitle">
+                Your private travel blueprints. Trips are <strong>private by default</strong> and protected by Row Level Security.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <input type="text" id="trips-search-input" placeholder="Search trips or destinations..." aria-label="Search trips by name or destination" class="search-input-pill">
+              <button class="btn btn-primary" id="btn-create-trip-main" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Create New Trip
+              </button>
+            </div>
+          </div>
+
+          <!-- Trip Status Filter Tabs -->
+          <div class="trips-section-tabs" role="tablist" aria-label="Filter trips by status">
+            <button class="trip-filter-tab active" data-trip-filter="all" role="tab" aria-selected="true" type="button">All Trips (<span id="trips-count-all">0</span>)</button>
+            <button class="trip-filter-tab" data-trip-filter="upcoming" role="tab" aria-selected="false" type="button">Upcoming (<span id="trips-count-upcoming">0</span>)</button>
+            <button class="trip-filter-tab" data-trip-filter="past" role="tab" aria-selected="false" type="button">Past / Completed (<span id="trips-count-past">0</span>)</button>
+            <button class="trip-filter-tab" data-trip-filter="archived" role="tab" aria-selected="false" type="button">Archived (<span id="trips-count-archived">0</span>)</button>
+          </div>
+
+          <!-- Prototype Mode Notice Banner -->
+          <div class="sample-content-notice" id="trips-sample-notice">
+            <span><strong>Saved Trip Blueprints:</strong> Select any trip below to inspect its itinerary, booking notes, and expenses, or archive trips to preserve their financial history.</span>
+          </div>
+
+          <!-- Trips Grid List (Rendered dynamically from saved trip data) -->
+          <div class="trips-list-grid" id="trips-container" aria-live="polite"></div>
+
+          <!-- Empty State (Shown when empty simulator is activated or no trips match filter) -->
+          <div id="dashboard-empty-state" class="empty-state-card" style="display: none;">
+            <div class="empty-state-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg>
+            </div>
+            <h3 class="empty-state-title" id="trips-empty-title">No trips match this view</h3>
+            <p class="empty-state-desc" id="trips-empty-desc">
+              Your planning canvas is fresh. Pick an Indian destination or start with basic dates to build your personalized itinerary.
+            </p>
+            <button class="btn btn-primary" id="btn-empty-create-trip" type="button">Create Your First Trip</button>
+          </div>
+
+          <!-- Selected Trip Details Panel -->
+          <div id="my-trip-detail-panel" class="trip-detail-panel" aria-live="polite" style="display: none;">
+            <div class="trip-detail-header">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                  <span class="trip-status-chip" id="trip-detail-status">Upcoming</span>
+                  <span class="trip-status-chip">Private • RLS</span>
+                </div>
+                <h2 class="trip-detail-title" id="trip-detail-name">Rajasthan Heritage Loop</h2>
+                <p class="trip-detail-meta" id="trip-detail-meta">Jaipur &amp; Jodhpur • Nov 28 – Dec 02 • 2 Travelers</p>
+              </div>
+              <div class="trip-detail-actions">
+                <button class="btn btn-primary" id="btn-detail-continue" type="button" style="min-height: 40px; padding: 8px 16px; font-size: 0.875rem;">
+                  Continue Planning →
+                </button>
+                <button class="btn btn-secondary" id="btn-detail-edit" type="button" style="min-height: 40px; padding: 8px 14px; font-size: 0.875rem;">
+                  Edit Trip
+                </button>
+                <button class="btn btn-secondary" id="btn-detail-map" type="button" style="min-height: 40px; padding: 8px 14px; font-size: 0.875rem;">
+                  View on Map
+                </button>
+                <button class="btn btn-secondary" id="btn-detail-archive" type="button" style="min-height: 40px; padding: 8px 14px; font-size: 0.875rem;">
+                  Archive Trip
+                </button>
+              </div>
+            </div>
+
+            <div class="trip-detail-kpis">
+              <div class="trip-detail-kpi">
+                <span class="stat-item-label">Budget</span>
+                <strong id="trip-detail-budget">₹45,000</strong>
+              </div>
+              <div class="trip-detail-kpi">
+                <span class="stat-item-label">Actual Spent</span>
+                <strong id="trip-detail-spent" style="color: var(--color-brand-teal);">₹18,400</strong>
+              </div>
+              <div class="trip-detail-kpi">
+                <span class="stat-item-label">Planning Progress</span>
+                <strong id="trip-detail-progress">75%</strong>
+              </div>
+              <div class="trip-detail-kpi">
+                <span class="stat-item-label">History Policy</span>
+                <span id="trip-detail-history-note" style="font-size: 0.75rem; color: var(--color-text-secondary);">Archive preserves records</span>
+              </div>
+            </div>
+
+            <div class="trips-section-tabs" role="tablist" aria-label="Trip details tabs">
+              <button class="trip-filter-tab active" data-detail-tab="itinerary" role="tab" aria-selected="true" type="button">Itinerary</button>
+              <button class="trip-filter-tab" data-detail-tab="bookings" role="tab" aria-selected="false" type="button">Bookings</button>
+              <button class="trip-filter-tab" data-detail-tab="expenses" role="tab" aria-selected="false" type="button">Expenses</button>
+            </div>
+
+            <div id="trip-detail-content" class="trip-detail-content">
+              <!-- Populated dynamically by js/planner.js -->
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 3: ITINERARY BUILDER
+             ========================================================================= -->
+        <section id="section-itinerary-builder" class="app-section" aria-labelledby="heading-itinerary">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Day-by-Day Journey Planner</span>
+              <h1 id="heading-itinerary" class="section-main-heading">Itinerary Builder</h1>
+              <p class="section-subtitle" id="itinerary-trip-subtitle">
+                Planning for <strong id="itinerary-active-trip-name">Rajasthan Heritage Loop</strong> • Jaipur & Jodhpur
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-primary btn-action-add-item" type="button">
+                + Add Activity
+              </button>
+            </div>
+          </div>
+
+          <!-- Planning Modes, Route Options, Linked Map & Comparison -->
+          <div class="itinerary-planner-shell" id="itinerary-planner-shell">
+            <div class="itinerary-modes-header">
+              <div>
+                <h2 class="itinerary-sub-heading">Itinerary Options</h2>
+                <p class="itinerary-sub-caption">Choose a planning mode to compare estimated routes or customise your own stops. Distances and travel times are estimates.</p>
+              </div>
+              <div class="planning-mode-tabs" role="tablist" aria-label="Itinerary planning mode">
+                <button class="planning-mode-btn active" id="mode-btn-ai" data-plan-mode="ai" role="tab" aria-selected="true" type="button">
+                  <span class="mode-title">AI Suggested</span>
+                  <span class="mode-desc">Balanced plan</span>
+                </button>
+                <button class="planning-mode-btn" id="mode-btn-fast" data-plan-mode="fast" role="tab" aria-selected="false" type="button">
+                  <span class="mode-title">Fast &amp; Efficient</span>
+                  <span class="mode-desc">Minimal travel time</span>
+                </button>
+                <button class="planning-mode-btn" id="mode-btn-customise" data-plan-mode="customise" role="tab" aria-selected="false" type="button">
+                  <span class="mode-title">Customise</span>
+                  <span class="mode-desc">Pick your own places</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="itinerary-options-map-grid">
+              <!-- Left Column: Generated Options OR Customise Builder -->
+              <div class="itinerary-options-col">
+                <div id="itinerary-options-list" class="itinerary-options-list" aria-live="polite">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+
+                <!-- Customise Mode Panel -->
+                <div id="customise-builder-panel" class="customise-builder-panel" hidden>
+                  <div class="customise-panel-header">
+                    <h3 class="customise-title">Customise Your Route</h3>
+                    <span class="customise-summary-pill" id="customise-totals-pill">0 stops • Est. 0 km</span>
+                  </div>
+
+                  <div class="customise-add-box">
+                    <label class="modal-label" for="customise-place-select">Add Curated Place</label>
+                    <div class="customise-add-row">
+                      <select id="customise-place-select" class="modal-input">
+                        <!-- Populated dynamically by js/planner.js -->
+                      </select>
+                      <button class="btn btn-secondary" id="btn-customise-add-curated" type="button">Add Stop</button>
+                    </div>
+                  </div>
+
+                  <form id="form-customise-place" class="customise-custom-form">
+                    <label class="modal-label" for="customise-custom-name">Or Add Custom Place</label>
+                    <div class="customise-add-row">
+                      <input type="text" id="customise-custom-name" class="modal-input" placeholder="e.g. Hawa Mahal" aria-label="Custom place name">
+                      <input type="text" id="customise-custom-time" class="modal-input customise-time-input" value="04:00 PM" aria-label="Suggested visit time">
+                      <button class="btn btn-primary" type="submit">Add</button>
+                    </div>
+                  </form>
+
+                  <ul id="customise-stops-list" class="customise-stops-list" aria-label="Customised itinerary stops">
+                    <!-- Populated dynamically by js/planner.js -->
+                  </ul>
+
+                  <div class="customise-footer-actions">
+                    <button class="btn btn-primary" id="btn-save-customise-route" type="button" style="width: 100%;">
+                      Save Customised Route to Trip
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Column: Linked Interactive Map, Marker Details & Route Comparison -->
+              <div class="itinerary-map-col">
+                <div class="itinerary-map-panel">
+                  <div class="map-mockup-canvas itinerary-svg-wrap" id="itinerary-map-canvas" aria-label="Interactive route map for selected itinerary option">
+                    <div class="map-badge-overlay" id="itinerary-map-badge">Illustrative Route Preview • Estimates Only</div>
+                    <svg id="itinerary-route-svg" width="100%" height="300" viewBox="0 0 600 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Route path between ordered itinerary stops">
+                      <rect width="600" height="320" fill="#FAF6EE" rx="12"/>
+                      <path d="M0 80 H600 M0 160 H600 M0 240 H600 M150 0 V320 M300 0 V320 M450 0 V320" stroke="#EBEFEA" stroke-width="1"/>
+                      <path id="itinerary-route-line" d="M90 190 L290 120 L490 170" stroke="#06706B" stroke-width="4" stroke-dasharray="8 6" stroke-linecap="round"/>
+                    </svg>
+                    <div id="itinerary-map-markers" class="itinerary-map-markers" aria-label="Numbered place markers">
+                      <!-- Interactive keyboard-accessible marker buttons rendered by js/planner.js -->
+                    </div>
+                  </div>
+
+                  <!-- Selected Map Marker Place Details -->
+                  <div id="map-place-detail-card" class="map-place-detail-card" aria-live="polite">
+                    <div class="place-detail-header">
+                      <span class="place-detail-badge" id="place-detail-order">Stop #1</span>
+                      <span class="place-detail-time" id="place-detail-time">09:30 AM – 11:30 AM</span>
+                    </div>
+                    <h3 class="place-detail-name" id="place-detail-name">Select a map marker</h3>
+                    <p class="place-detail-desc" id="place-detail-desc">Click or focus any numbered marker on the map to inspect suggested visit timing, estimated cost, and stop notes.</p>
+                  </div>
+                </div>
+
+                <!-- Route Comparison Area -->
+                <div class="route-compare-section" aria-label="Route comparison">
+                  <div class="route-compare-header">
+                    <h3 class="route-compare-heading">Compare Routes</h3>
+                    <span class="route-compare-note">Estimated distance &amp; travel duration (not live traffic)</span>
+                  </div>
+                  <div id="route-compare-grid" class="route-compare-grid">
+                    <!-- Populated dynamically by js/planner.js -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="itinerary-layout">
+            <!-- Day Selector Sidebar -->
+            <aside class="days-nav-sidebar" aria-label="Select trip day">
+              <button class="day-select-btn active" data-day="day-1" type="button">
+                <div>Day 1 • Nov 28</div>
+                <div class="day-cost-sub">Est. ₹1,550</div>
+              </button>
+              <button class="day-select-btn" data-day="day-2" type="button">
+                <div>Day 2 • Nov 29</div>
+                <div class="day-cost-sub">Est. ₹2,400</div>
+              </button>
+              <button class="day-select-btn" data-day="day-3" type="button">
+                <div>Day 3 • Nov 30</div>
+                <div class="day-cost-sub">Est. ₹950</div>
+              </button>
+              <button class="btn btn-secondary" id="btn-add-day" type="button" style="width: 100%; margin-top: 8px; font-size: 0.8125rem; min-height: 38px;">
+                + Add Day 4
+              </button>
+            </aside>
+
+            <!-- Day Content Area -->
+            <div class="day-content-area">
+              <div class="day-header-bar">
+                <div>
+                  <h3 style="font-size: 1.35rem; font-weight: 800;" id="current-day-heading">Day 1: Arrival & Historic Core</h3>
+                  <span style="font-size: 0.8125rem; color: var(--color-text-secondary);">Pacing: Relaxed (3 activities scheduled)</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <span class="sticker" style="margin: 0;">Day Est. Total: ₹1,550</span>
+                  <button class="btn btn-primary btn-action-add-item" type="button" style="padding: 6px 14px; font-size: 0.8125rem; min-height: 36px;">
+                    + Add Activity
+                  </button>
+                </div>
+              </div>
+
+              <!-- Activities List -->
+              <div class="activities-list" id="activities-container">
+                <!-- Activity 1 -->
+                <article class="activity-card">
+                  <div class="activity-time-col">
+                    <span class="activity-time">10:00 AM</span>
+                    <span class="activity-duration">60 mins</span>
+                  </div>
+                  <div class="activity-body">
+                    <h4 class="activity-title">Check-in at Heritage Haveli Hotel</h4>
+                    <div class="activity-location">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                      <span>Bani Park, Jaipur</span>
+                    </div>
+                    <p class="activity-notes">Early check-in requested. Drop bags and refresh before the walking tour.</p>
+                  </div>
+                  <div class="activity-cost-col">
+                    <span class="cost-estimate-label">Estimated Cost</span>
+                    <span class="cost-estimate-val">₹0</span>
+                    <button class="btn-delete-item" type="button" title="Delete activity" aria-label="Delete activity">×</button>
+                  </div>
+                </article>
+
+                <!-- Activity 2 -->
+                <article class="activity-card">
+                  <div class="activity-time-col">
+                    <span class="activity-time">02:30 PM</span>
+                    <span class="activity-duration">150 mins</span>
+                  </div>
+                  <div class="activity-body">
+                    <h4 class="activity-title">City Palace & Jantar Mantar Walking Tour</h4>
+                    <div class="activity-location">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                      <span>Old City, Pink City</span>
+                    </div>
+                    <p class="activity-notes">Composite ticket includes observatory. Carry student IDs for entry concession.</p>
+                  </div>
+                  <div class="activity-cost-col">
+                    <span class="cost-estimate-label">Estimated Cost</span>
+                    <span class="cost-estimate-val">₹1,200</span>
+                    <button class="btn-delete-item" type="button" title="Delete activity" aria-label="Delete activity">×</button>
+                  </div>
+                </article>
+
+                <!-- Activity 3 -->
+                <article class="activity-card">
+                  <div class="activity-time-col">
+                    <span class="activity-time">05:30 PM</span>
+                    <span class="activity-duration">90 mins</span>
+                  </div>
+                  <div class="activity-body">
+                    <h4 class="activity-title">Sunset & Chai at Nahargarh Fort</h4>
+                    <div class="activity-location">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                      <span>Aravalli Hills, Jaipur</span>
+                    </div>
+                    <p class="activity-notes">Catch the twilight panoramic views over the Pink City. Auto-rickshaw return booked in advance.</p>
+                  </div>
+                  <div class="activity-cost-col">
+                    <span class="cost-estimate-label">Estimated Cost</span>
+                    <span class="cost-estimate-val">₹350</span>
+                    <button class="btn-delete-item" type="button" title="Delete activity" aria-label="Delete activity">×</button>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 4: MAPS & ROUTES
+             ========================================================================= -->
+        <section id="section-maps-routes" class="app-section" aria-labelledby="heading-maps-routes">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Geographic Route Overview</span>
+              <h1 id="heading-maps-routes" class="section-main-heading">Maps & Routes</h1>
+              <p class="section-subtitle" id="maps-trip-subtitle">
+                Day-by-day and full-trip route preview for <strong id="maps-active-trip-name">Rajasthan Heritage Loop</strong>. No external routing API is configured—distances and durations are clearly labeled fallback estimates.
+              </p>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <!-- Scope Switcher: Day View vs Full-Trip View -->
+              <div class="map-view-toggle" role="tablist" aria-label="Route scope">
+                <button class="map-tab-btn active" id="maps-scope-day" data-maps-scope="day" role="tab" aria-selected="true" type="button">Day View</button>
+                <button class="map-tab-btn" id="maps-scope-full" data-maps-scope="full" role="tab" aria-selected="false" type="button">Full Trip</button>
+              </div>
+              <!-- Display Mode Switcher -->
+              <div class="map-view-toggle">
+                <button class="map-tab-btn active" id="btn-view-both" type="button">Both Map &amp; List</button>
+                <button class="map-tab-btn" id="btn-view-map-only" type="button">Map Only</button>
+                <button class="map-tab-btn" id="btn-view-list-only" type="button">List Only</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Day Selection Bar (Visible in Day View) -->
+          <div id="maps-day-selector" class="maps-day-selector" role="tablist" aria-label="Select day to view on map">
+            <button class="day-select-btn active" data-maps-day="day-1" role="tab" aria-selected="true" type="button">Day 1 • Historic Core</button>
+            <button class="day-select-btn" data-maps-day="day-2" role="tab" aria-selected="false" type="button">Day 2 • Forts &amp; Bazaars</button>
+            <button class="day-select-btn" data-maps-day="day-3" role="tab" aria-selected="false" type="button">Day 3 • Transfer Leg</button>
+          </div>
+
+          <div class="map-split-view" id="map-view-container">
+            <!-- Simulated SVG Map Canvas + Marker Details -->
+            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+              <div class="map-mockup-canvas itinerary-svg-wrap" aria-label="Route visual map">
+                <div class="map-badge-overlay" id="maps-fallback-badge">Fallback Estimate • Illustrative Route Preview</div>
+                <svg width="100%" height="340" viewBox="0 0 600 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive route preview with numbered stops">
+                  <rect width="600" height="320" fill="#FAF6EE" rx="12"/>
+                  <path d="M0 80 H600 M0 160 H600 M0 240 H600 M150 0 V320 M300 0 V320 M450 0 V320" stroke="#EBEFEA" stroke-width="1"/>
+                  <path id="maps-route-line-alt" d="" stroke="#9BA6A1" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>
+                  <path id="maps-route-line-active" d="" stroke="#06706B" stroke-width="4" stroke-dasharray="8 6" stroke-linecap="round"/>
+                </svg>
+                <div id="maps-markers-layer" class="itinerary-map-markers" aria-label="Numbered place markers">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+
+              <!-- Selected Map Marker Details -->
+              <div id="maps-place-detail-card" class="map-place-detail-card" aria-live="polite" style="margin-top: 0;">
+                <div class="place-detail-header">
+                  <span class="place-detail-badge" id="maps-detail-order">Stop #1</span>
+                  <span class="place-detail-time" id="maps-detail-time">09:30 AM</span>
+                </div>
+                <h3 class="place-detail-name" id="maps-detail-name">Select a stop or marker</h3>
+                <p class="place-detail-desc" id="maps-detail-desc">Click any stop in the list or any numbered marker on the map to inspect details.</p>
+              </div>
+            </div>
+
+            <!-- Accessible Stop Sequence List + Route Comparison -->
+            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+              <div class="map-list-fallback" id="maps-stop-sequence-panel">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                  <h3 style="font-size: 1.15rem; font-weight: 800;" id="maps-sequence-heading">Day 1 Ordered Stops</h3>
+                  <span class="route-total-pill" id="maps-sequence-totals">Est. 18 km • ~55 min</span>
+                </div>
+                <p style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: 12px;">
+                  Select a stop to focus its marker on the map. Travel legs are estimated (not live traffic).
+                </p>
+                <div id="maps-stop-list">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+
+              <!-- Route Comparison Options -->
+              <div class="route-compare-section" aria-label="Compare available route options">
+                <div class="route-compare-header">
+                  <h3 class="route-compare-heading">Route Comparison</h3>
+                  <span class="route-compare-note">Fallback estimates (no live traffic)</span>
+                </div>
+                <div id="maps-route-compare-grid" class="route-compare-grid">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 5: BOOKINGS
+             ========================================================================= -->
+        <section id="section-bookings" class="app-section" aria-labelledby="heading-bookings">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Personal Reference Notes</span>
+              <h1 id="heading-bookings" class="section-main-heading">Bookings</h1>
+              <p class="section-subtitle">
+                Store references for transport, stay, activities, and other reservations.
+              </p>
+            </div>
+            <button class="btn btn-primary btn-action-add-booking" type="button">
+              + Add Booking Note
+            </button>
+          </div>
+
+          <!-- Mandatory Booking Disclosure Alert -->
+          <div class="boundary-banner">
+            <div class="boundary-banner-content" style="justify-content: flex-start; text-align: left;">
+              <span class="boundary-badge">Disclosure</span>
+              <p>
+                <strong>Personal Reference Vault (No External Payments):</strong> Booking records are personal notes created by you to keep references together. YatraSathi organizes travel plans and does not make, confirm, pay for, change, or cancel external reservations.
+              </p>
+            </div>
+          </div>
+
+          <!-- Seeded Reference Catalogue (Sample Estimates Only) -->
+          <div class="booking-catalogue-shell" id="booking-catalogue-shell">
+            <div class="booking-cat-header">
+              <div>
+                <h2 class="itinerary-sub-heading">Sample Service Catalogue (Reference Estimates)</h2>
+                <p class="itinerary-sub-caption">Compare seeded sample options in ₹ and save a personal reference note to your trip. Prices are sample estimates—no live supplier availability or payment processing.</p>
+              </div>
+              <span class="dash-data-source-pill">Sample Catalogue • No Live Booking</span>
+            </div>
+
+            <!-- Service Type Filter Tabs -->
+            <div class="explore-vibe-chips" id="booking-type-tabs" role="tablist" aria-label="Filter seeded services by type" style="margin-bottom: var(--space-sm);">
+              <button class="explore-vibe-chip active" data-btype="all" role="tab" aria-selected="true" type="button">All Services</button>
+              <button class="explore-vibe-chip" data-btype="flights" role="tab" aria-selected="false" type="button">Flights</button>
+              <button class="explore-vibe-chip" data-btype="hotels" role="tab" aria-selected="false" type="button">Hotels</button>
+              <button class="explore-vibe-chip" data-btype="trains" role="tab" aria-selected="false" type="button">Trains</button>
+              <button class="explore-vibe-chip" data-btype="buses" role="tab" aria-selected="false" type="button">Buses</button>
+              <button class="explore-vibe-chip" data-btype="activities" role="tab" aria-selected="false" type="button">Activities</button>
+            </div>
+
+            <div class="booking-cat-controls">
+              <input type="text" id="booking-catalogue-search" class="modal-input" placeholder="Search seeded flights, hotels, trains, buses, or activities..." aria-label="Search seeded booking services">
+              <select id="booking-catalogue-sort" class="modal-input explore-compact-select" aria-label="Sort booking options" style="max-width: 220px;">
+                <option value="recommended">Recommended</option>
+                <option value="price-asc">Lowest Est. Price (₹)</option>
+                <option value="price-desc">Highest Est. Price (₹)</option>
+              </select>
+            </div>
+
+            <div class="booking-catalogue-grid">
+              <!-- Left: Seeded Options List -->
+              <div id="booking-catalogue-list" class="booking-catalogue-list" aria-live="polite">
+                <!-- Populated dynamically by js/planner.js -->
+              </div>
+
+              <!-- Right: Trip Summary & INR Breakdown -->
+              <aside class="booking-summary-panel" id="booking-summary-panel" aria-label="Selected option summary and INR breakdown">
+                <div class="dash-card-header" style="margin-bottom: 8px;">
+                  <strong style="font-size: 1rem;">Trip &amp; Estimate Summary</strong>
+                  <span class="trip-status-chip" id="booking-summary-status">Reference Note</span>
+                </div>
+                <div style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: 12px;" id="booking-summary-trip">
+                  Rajasthan Heritage Loop • 2 Travelers
+                </div>
+                <div id="booking-summary-selected" class="booking-summary-selected">
+                  Select a sample service on the left to inspect its INR breakdown.
+                </div>
+                <div class="booking-breakdown-rows" id="booking-breakdown-rows">
+                  <div class="booking-breakdown-row"><span>Base Estimate</span><strong id="booking-base-inr">₹0</strong></div>
+                  <div class="booking-breakdown-row"><span>Est. Taxes &amp; Fees</span><strong id="booking-tax-inr">₹0</strong></div>
+                  <div class="booking-breakdown-row total"><span>Total Est. (INR)</span><strong id="booking-total-inr">₹0</strong></div>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-save-catalogue-note" style="width: 100%; margin-top: 12px;" disabled>
+                  Save as Personal Booking Note
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-proceed-sim-payment" style="width: 100%; margin-top: 8px;" disabled>
+                  Review Simulated Payment →
+                </button>
+              </aside>
+            </div>
+          </div>
+
+          <!-- Records List -->
+          <div class="records-list" id="bookings-container">
+            <!-- Record 1: Shatabdi Train -->
+            <article class="booking-card">
+              <div class="booking-card-top">
+                <div class="booking-type-badge cat-transport">Transport</div>
+                <div class="booking-amount">₹2,450</div>
+              </div>
+              <h4 class="booking-provider">Indian Railways (IRCTC) — Shatabdi Express</h4>
+              <div class="booking-pnr">
+                <span>PNR / Reference:</span>
+                <code>PNR-2849103829</code>
+              </div>
+              <p class="booking-notes">NDLS (06:05 AM) to JP (10:45 AM). Executive Chair Car. Breakfast included.</p>
+              <div class="booking-card-actions">
+                <span style="font-size: 0.75rem; color: var(--color-text-muted);">Added by Arnav (Owner)</span>
+                <button class="btn-delete-booking" type="button" title="Delete record" aria-label="Delete booking note">Delete</button>
+              </div>
+            </article>
+
+            <!-- Record 2: Haveli Hotel -->
+            <article class="booking-card">
+              <div class="booking-card-top">
+                <div class="booking-type-badge cat-stay">Stay</div>
+                <div class="booking-amount">₹9,800</div>
+              </div>
+              <h4 class="booking-provider">Heritage Haveli Hotel</h4>
+              <div class="booking-pnr">
+                <span>Confirmation Ref:</span>
+                <code>HH-JPR-2026-992</code>
+              </div>
+              <p class="booking-notes">2 Nights Heritage Deluxe Room. Check-in Nov 28 at 12:00 PM. Includes traditional breakfast.</p>
+              <div class="booking-card-actions">
+                <span style="font-size: 0.75rem; color: var(--color-text-muted);">Added by Arnav (Owner)</span>
+                <button class="btn-delete-booking" type="button" title="Delete record" aria-label="Delete booking note">Delete</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SIMULATED PAYMENT REVIEW (Demo Only — No Real Financial Provider)
+             ========================================================================= -->
+        <section id="section-payment-review" class="app-section" aria-labelledby="heading-payment-review">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Demo Checkout Review</span>
+              <h1 id="heading-payment-review" class="section-main-heading">Simulated Payment Review</h1>
+              <p class="section-subtitle">
+                Review your selected demo booking and test simulated payment outcomes. Do not enter real card, UPI, bank, or wallet credentials.
+              </p>
+            </div>
+            <button class="btn btn-secondary" id="btn-payment-back-bookings" type="button">← Back to Bookings</button>
+          </div>
+
+          <!-- Always-Visible Simulated Payment Notice -->
+          <div class="boundary-banner" id="simulated-payment-notice">
+            <div class="boundary-banner-content" style="justify-content: flex-start; text-align: left;">
+              <span class="boundary-badge">Simulated Demo</span>
+              <p>
+                <strong>Simulated Payment Environment:</strong> No real money is charged, no external supplier is contacted, and no real financial credentials are collected or transmitted.
+              </p>
+            </div>
+          </div>
+
+          <div class="payment-review-grid">
+            <!-- Left: Booking Summary & INR Breakdown -->
+            <div class="widget-card">
+              <h2 class="widget-title">Demo Booking &amp; INR Breakdown</h2>
+              <div style="font-size: 0.875rem; color: var(--color-text-secondary); margin-bottom: 12px;" id="pay-trip-details">
+                Rajasthan Heritage Loop • Jaipur &amp; Jodhpur • 2 Travelers
+              </div>
+              <div class="booking-summary-selected" id="pay-selected-service">
+                Selected demo booking will appear here.
+              </div>
+              <div class="booking-breakdown-rows" style="margin-bottom: 16px;">
+                <div class="booking-breakdown-row"><span>Base Estimate</span><strong id="pay-base-inr">₹0</strong></div>
+                <div class="booking-breakdown-row"><span>Est. Taxes &amp; Fees</span><strong id="pay-tax-inr">₹0</strong></div>
+                <div class="booking-breakdown-row total"><span>Total Simulated Amount (INR)</span><strong id="pay-total-inr">₹0</strong></div>
+              </div>
+              <div style="font-size: 0.8125rem; color: var(--color-text-secondary);">
+                Booking Status: <strong id="pay-booking-status">Pending Simulated Review</strong>
+              </div>
+            </div>
+
+            <!-- Right: Simulated Payment Options & Fixed Demo Scenarios -->
+            <div class="widget-card">
+              <h2 class="widget-title">Simulated Payment Method</h2>
+              <div class="payment-methods-list" id="pay-methods-list" role="radiogroup" aria-label="Simulated payment methods">
+                <button type="button" class="payment-method-btn active" data-pay-method="upi" role="radio" aria-checked="true">
+                  <strong>Simulated UPI</strong>
+                  <span>Instant demo approval — no UPI ID required</span>
+                </button>
+                <button type="button" class="payment-method-btn" data-pay-method="card" role="radio" aria-checked="false">
+                  <strong>Simulated Card</strong>
+                  <span>Demo credit/debit flow — no card number required</span>
+                </button>
+                <button type="button" class="payment-method-btn" data-pay-method="netbanking" role="radio" aria-checked="false">
+                  <strong>Simulated NetBanking</strong>
+                  <span>Demo bank redirect — no login credentials required</span>
+                </button>
+                <button type="button" class="payment-method-btn" data-pay-method="wallet" role="radio" aria-checked="false">
+                  <strong>Simulated Wallet</strong>
+                  <span>Demo wallet balance — no wallet login required</span>
+                </button>
+              </div>
+
+              <div class="modal-form-group" style="margin-top: 16px;">
+                <label class="modal-label" for="pay-demo-scenario">Demo Outcome Scenario</label>
+                <select id="pay-demo-scenario" class="modal-input">
+                  <option value="success">Fixed Demo Scenario: Simulated Success</option>
+                  <option value="failure">Fixed Demo Scenario: Simulated Failure (Retryable)</option>
+                </select>
+              </div>
+
+              <!-- Failure Banner (Shown on Simulated Failure) -->
+              <div id="payment-error-alert" class="error-alert-box" style="display: none; margin: 12px 0;" role="alert">
+                <span id="payment-error-text">Simulated payment declined in demo failure scenario. No duplicate booking was created.</span>
+              </div>
+
+              <!-- Success Receipt Card (Shown on Simulated Success) -->
+              <div id="payment-receipt-card" class="payment-receipt-card" style="display: none;" aria-live="polite">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <strong style="color: var(--color-state-success);">✓ Simulated Booking Confirmed</strong>
+                  <code id="receipt-id-code">SIM-RCPT-0000</code>
+                </div>
+                <p id="receipt-summary-text" style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: 8px;"></p>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 10px;">
+                  Added once to your Bookings list as a simulated demo record.
+                </div>
+                <div id="receipt-email-box" style="border-top: 1px solid var(--color-border-subtle, #E2E8F0); padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                  <div id="receipt-email-status" style="font-size: 0.75rem; color: var(--color-text-secondary);">
+                    Receipt email not requested yet.
+                  </div>
+                  <button type="button" class="btn btn-secondary" id="btn-retry-receipt-email" style="align-self: flex-start; min-height: 32px; padding: 4px 10px; font-size: 0.75rem;">
+                    Send Receipt Email
+                  </button>
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-primary" id="btn-run-sim-payment" style="width: 100%; margin-top: 12px;">
+                Run Simulated Payment
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 6: EXPENSES
+             ========================================================================= -->
+        <section id="section-expenses" class="app-section" aria-labelledby="heading-expenses">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Paise-Safe Financial Ledger</span>
+              <h1 id="heading-expenses" class="section-main-heading">Expenses</h1>
+              <p class="section-subtitle">
+                Track recorded spending in Indian Rupees (₹). Stored and calculated as integer paise to prevent precision loss.
+              </p>
+            </div>
+            <button class="btn btn-primary btn-action-add-expense" type="button">
+              + Record Expense
+            </button>
+          </div>
+
+          <!-- Budget Comparison KPI Grid -->
+          <div class="budget-comparison-grid" style="margin-bottom: 24px;">
+            <div class="budget-comparison-item">
+              <div class="comparison-label">Set Trip Budget</div>
+              <div class="comparison-value" id="exp-total-budget">₹45,000</div>
+              <div style="font-size: 0.75rem; color: var(--color-text-muted);">Initial trip allowance</div>
+            </div>
+            <div class="budget-comparison-item">
+              <div class="comparison-label">Actual Recorded Spent</div>
+              <div class="comparison-value" id="exp-total-spent" style="color: var(--color-brand-teal);">₹18,400</div>
+              <div style="font-size: 0.75rem; color: var(--color-text-muted);">Sum of logged bills</div>
+            </div>
+            <div class="budget-comparison-item" id="exp-remaining-card">
+              <div class="comparison-label" id="exp-remaining-label">Remaining Safe Budget</div>
+              <div class="comparison-value" id="exp-remaining" style="color: var(--color-state-success);">₹26,600</div>
+              <div id="exp-remaining-note" style="font-size: 0.75rem; color: var(--color-text-muted);">Budget minus actual spent</div>
+            </div>
+            <div class="budget-comparison-item" style="border: 1.5px dashed var(--color-brand-coral);">
+              <div class="comparison-label" style="color: var(--color-brand-coral);">Planned Itinerary Est.</div>
+              <div class="comparison-value" id="exp-planned-est" style="color: var(--color-brand-coral);">₹14,200</div>
+              <div style="font-size: 0.75rem; color: var(--color-text-muted);">Estimated, not yet spent</div>
+            </div>
+          </div>
+
+          <!-- Category Breakdown & Trip-Wise Summary -->
+          <div class="expenses-analytics-grid" id="expenses-analytics-grid">
+            <div class="widget-card">
+              <div class="dash-card-header">
+                <h2 class="widget-title" style="margin-bottom: 0;">Category Breakdown</h2>
+                <span class="dash-data-source-pill" id="exp-breakdown-total-pill">₹0 Total</span>
+              </div>
+              <div id="exp-category-breakdown" class="exp-breakdown-list" aria-live="polite">
+                <!-- Populated dynamically from saved expenses by js/planner.js -->
+              </div>
+            </div>
+
+            <div class="widget-card">
+              <div class="dash-card-header">
+                <h2 class="widget-title" style="margin-bottom: 0;">Trip-Wise Summary</h2>
+                <span style="font-size: 0.75rem; color: var(--color-text-secondary);">Click a trip to filter</span>
+              </div>
+              <div id="exp-trip-summary" class="exp-trip-summary-list" aria-live="polite">
+                <!-- Populated dynamically from saved expenses by js/planner.js -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Recorded Expenses Log Table -->
+          <div class="expense-table-card">
+            <div style="padding: 16px; border-bottom: 1px solid var(--color-border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <h3 style="font-size: 1.1rem; font-weight: 800;">Recent Expense Entries</h3>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <select id="exp-filter-trip" class="modal-input explore-compact-select" aria-label="Filter expenses by trip" style="width: auto; min-width: 170px;">
+                  <option value="all">All Trips</option>
+                </select>
+                <select id="exp-filter-category" class="modal-input explore-compact-select" aria-label="Filter expenses by category" style="width: auto; min-width: 150px;">
+                  <option value="all">All Categories</option>
+                  <option value="transport">Transport</option>
+                  <option value="stay">Stay</option>
+                  <option value="food">Food</option>
+                  <option value="activities">Activities</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <table class="expense-table" aria-label="Trip expenses table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Trip</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Note / Memo</th>
+                  <th scope="col">Author</th>
+                  <th scope="col" style="text-align: right;">Amount (₹)</th>
+                  <th scope="col" style="text-align: center; width: 96px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="expense-table-body">
+                <!-- Populated dynamically by js/planner.js -->
+              </tbody>
+            </table>
+
+            <!-- Empty State when no expenses match or exist -->
+            <div id="exp-empty-state" class="empty-state-card" style="display: none; margin: 16px;">
+              <h3 class="empty-state-title">No expenses recorded</h3>
+              <p class="empty-state-desc">Log your actual trip spending in ₹ or reset your filters to view saved entries.</p>
+              <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-action-add-expense" type="button">+ Record Expense</button>
+                <button class="btn btn-secondary" id="btn-exp-reset-filters" type="button">Reset Filters</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 7: ACHIEVEMENTS
+             ========================================================================= -->
+        <section id="section-achievements" class="app-section" aria-labelledby="heading-achievements">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Milestones &amp; Progress</span>
+              <h1 id="heading-achievements" class="section-main-heading">Achievements</h1>
+              <p class="section-subtitle">
+                Pressure-free milestones and badges earned from real trip-planning actions. Changing plans never removes earned achievements.
+              </p>
+            </div>
+          </div>
+
+          <!-- Empty State for New Accounts -->
+          <div id="ach-empty-state" class="empty-state-card" style="display: none;">
+            <div class="empty-state-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            </div>
+            <h3 class="empty-state-title">No achievements earned yet</h3>
+            <p class="empty-state-desc">
+              Create your first trip blueprint to unlock <strong>First Blueprint (+100 XP)</strong>, or explore Indian destinations to begin tracking goals.
+            </p>
+            <button class="btn btn-primary" id="btn-ach-start-trip" type="button">Create Your First Trip</button>
+          </div>
+
+          <div id="ach-main-content">
+            <!-- Top KPI Row -->
+            <div class="budget-comparison-grid" style="margin-bottom: 24px;">
+              <div class="budget-comparison-item">
+                <div class="comparison-label">Experience Points</div>
+                <div class="comparison-value" id="ach-total-xp">0 XP</div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">Earned from completed actions</div>
+              </div>
+              <div class="budget-comparison-item">
+                <div class="comparison-label">Badges Unlocked</div>
+                <div class="comparison-value" id="ach-badges-count" style="color: var(--color-brand-teal);">0 / 6</div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">Milestones completed</div>
+              </div>
+              <div class="budget-comparison-item">
+                <div class="comparison-label">Goal Progress</div>
+                <div class="comparison-value" id="ach-overall-pct">0%</div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">Across active planning goals</div>
+              </div>
+              <div class="budget-comparison-item">
+                <div class="comparison-label">Actions Recorded</div>
+                <div class="comparison-value" id="ach-actions-count">0</div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">Trips, activities &amp; entries</div>
+              </div>
+            </div>
+
+            <div class="dashboard-grid" style="margin-bottom: 24px;">
+              <!-- Earned & Available Badges with Clear Criteria -->
+              <div class="widget-card">
+                <div class="dash-card-header">
+                  <h2 class="widget-title" style="margin-bottom: 0;">Badges &amp; How to Earn</h2>
+                  <span style="font-size: 0.75rem; color: var(--color-text-secondary);">Consistent XP &amp; criteria</span>
+                </div>
+                <div id="ach-badges-grid" class="ach-badges-grid" aria-live="polite">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+
+              <!-- Defined Goals Progress -->
+              <div class="widget-card">
+                <h2 class="widget-title">Progress Toward Goals</h2>
+                <div id="ach-goals-list" class="exp-breakdown-list" aria-live="polite">
+                  <!-- Populated dynamically by js/planner.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Achievements -->
+            <div class="widget-card">
+              <div class="dash-card-header">
+                <h2 class="widget-title" style="margin-bottom: 0;">Recent Achievements</h2>
+                <span style="font-size: 0.75rem; color: var(--color-text-secondary);">No prizes or monetary rewards — planning milestones only</span>
+              </div>
+              <ul id="ach-recent-list" class="dash-activity-list">
+                <!-- Populated dynamically by js/planner.js -->
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================================================================
+             SECTION 8: PROFILE & SETTINGS
+             ========================================================================= -->
+        <section id="section-profile-settings" class="app-section" aria-labelledby="heading-profile">
+          <div class="section-header-row">
+            <div>
+              <span class="section-label">Account & Device Controls</span>
+              <h1 id="heading-profile" class="section-main-heading">Profile & Settings</h1>
+              <p class="section-subtitle">
+                Manage your travel preferences, offline cached snapshots, and active Better Auth session.
+              </p>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <!-- Profile Settings Card -->
+            <div class="widget-card">
+              <h2 class="widget-title">Traveler Profile &amp; Preferences</h2>
+              <form id="form-profile-settings" novalidate>
+                <div class="modal-form-group">
+                  <label class="modal-label" for="profile-name">Display Name *</label>
+                  <input id="profile-name" type="text" value="Arnav Sharma" class="modal-input" required>
+                </div>
+                <div class="modal-form-group">
+                  <label class="modal-label" for="profile-email">Email Address (Read-Only)</label>
+                  <input id="profile-email" type="email" value="arnav@example.com" class="modal-input" readonly>
+                </div>
+                <div class="modal-form-group">
+                  <label class="modal-label" for="profile-phone">Phone Number (Optional)</label>
+                  <input id="profile-phone" type="tel" placeholder="e.g. +91 98765 43210" class="modal-input" autocomplete="tel">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="profile-pacing">Travel Pacing</label>
+                    <select id="profile-pacing" class="modal-input">
+                      <option value="relaxed" selected>Relaxed (2–3 activities/day)</option>
+                      <option value="active">Active Explorer (4–5/day)</option>
+                      <option value="slow">Slow Traveler (Longer stays)</option>
+                    </select>
+                  </div>
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="profile-budget-pref">Budget Preference</label>
+                    <select id="profile-budget-pref" class="modal-input">
+                      <option value="budget">Budget-Friendly (&lt; ₹20,000)</option>
+                      <option value="balanced" selected>Balanced (₹20k – ₹50k)</option>
+                      <option value="comfort">Comfort / Boutique (₹50k+)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="modal-form-group">
+                  <span class="modal-label" id="profile-interests-label">Travel Interests</span>
+                  <div class="explore-vibe-chips" id="profile-interests-group" role="group" aria-labelledby="profile-interests-label">
+                    <button type="button" class="explore-vibe-chip active" data-interest="heritage" aria-pressed="true">Heritage &amp; Culture</button>
+                    <button type="button" class="explore-vibe-chip active" data-interest="food" aria-pressed="true">Food &amp; Markets</button>
+                    <button type="button" class="explore-vibe-chip" data-interest="nature" aria-pressed="false">Nature &amp; Hills</button>
+                    <button type="button" class="explore-vibe-chip" data-interest="coastal" aria-pressed="false">Beaches &amp; Coast</button>
+                    <button type="button" class="explore-vibe-chip" data-interest="spiritual" aria-pressed="false">Spiritual &amp; Ghats</button>
+                  </div>
+                </div>
+                <div class="modal-form-group">
+                  <label class="modal-label" for="profile-currency">Currency (INR Only)</label>
+                  <input id="profile-currency" type="text" value="INR (₹) — Indian Rupees" class="modal-input" readonly>
+                </div>
+                <div id="profile-save-status" role="status" aria-live="polite" style="font-size: 0.8125rem; margin-bottom: 12px;"></div>
+                <button class="btn btn-primary" id="btn-save-profile" type="submit" style="width: 100%;">
+                  Save Profile Preferences
+                </button>
+              </form>
+            </div>
+
+            <!-- Security, Password & Offline Controls -->
+            <div style="display: flex; flex-direction: column; gap: var(--space-lg);">
+              <div class="widget-card">
+                <h2 class="widget-title">Password &amp; Session</h2>
+                <form id="form-change-password" novalidate>
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="profile-new-password">New Password *</label>
+                    <input id="profile-new-password" type="password" class="modal-input" placeholder="At least 8 characters" minlength="8" autocomplete="new-password">
+                  </div>
+                  <div class="modal-form-group">
+                    <label class="modal-label" for="profile-confirm-password">Confirm New Password *</label>
+                    <input id="profile-confirm-password" type="password" class="modal-input" placeholder="Re-enter new password" minlength="8" autocomplete="new-password">
+                  </div>
+                  <div id="profile-password-status" role="status" aria-live="polite" style="font-size: 0.8125rem; margin-bottom: 12px;"></div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <button class="btn btn-secondary" id="btn-change-password" type="submit" style="flex: 1;">
+                      Update Password
+                    </button>
+                    <button class="btn btn-secondary" id="btn-sign-out" type="button" style="color: var(--color-state-error); border-color: var(--color-state-error);">
+                      Sign Out
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Offline Cache & Privacy Controls -->
+              <div class="widget-card">
+                <h2 class="widget-title">Offline &amp; Privacy Controls</h2>
+                <p style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 16px;">
+                  YatraSathi stores essential trip snapshots in your browser for read-only access while traveling without internet.
+                </p>
+
+                <div style="margin-bottom: 16px;">
+                  <button class="btn btn-secondary" id="btn-save-offline" type="button" style="width: 100%; margin-bottom: 8px;">
+                    📵 Save Active Trip Offline
+                  </button>
+                  <div id="offline-sync-status" style="font-size: 0.75rem; color: var(--color-text-muted);">
+                    Sync Status: Online • Click above to cache essentials for offline viewing.
+                  </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--color-border-subtle); padding-top: 16px;">
+                  <button class="btn btn-secondary" id="btn-clear-cache" type="button" style="width: 100%;">
+                    🗑️ Clear Offline Data Cache
+                  </button>
+                  <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 8px;">
+                    Purges all cached trip snapshots from browser storage. Cached data is also cleared automatically on sign out.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Accessible Mobile Bottom Navigation Bar -->
+      <nav class="mobile-bottom-nav" aria-label="Mobile quick navigation">
+        <button class="mobile-nav-btn active" data-section="explore-india" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+          <span>Explore</span>
+        </button>
+        <button class="mobile-nav-btn" data-section="my-trips" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Trips</span>
+        </button>
+        <button class="mobile-nav-btn" data-section="itinerary-builder" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>Itinerary</span>
+        </button>
+        <button class="mobile-nav-btn" data-section="expenses" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span>Expenses</span>
+        </button>
+        <button class="mobile-nav-btn" id="btn-bottom-menu" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          <span>Menu</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODALS: CREATE TRIP, ADD ITEM, ADD BOOKING, RECORD EXPENSE
+       ========================================================================= -->
+  <!-- MODAL 1: CREATE NEW TRIP -->
+  <div id="modal-create-trip" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-trip-title" aria-hidden="true">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" data-close-modal type="button" aria-label="Close dialog">×</button>
+      <h2 id="modal-trip-title" style="font-size: 1.5rem; margin-bottom: 6px;">Create a New Trip</h2>
+      <p style="font-size: 0.875rem; color: var(--color-text-secondary); margin-bottom: 20px;">
+        Trips are private by default. You can invite travel companions later.
+      </p>
+
+      <form id="form-create-trip">
+        <input type="hidden" id="trip-edit-id" value="">
+        <div class="modal-form-group">
+          <label class="modal-label" for="new-trip-name">Trip Name *</label>
+          <input class="modal-input" type="text" id="new-trip-name" placeholder="e.g. Goa Monsoon Retreat" required>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="new-trip-destination">Destination *</label>
+          <input class="modal-input" type="text" id="new-trip-destination" placeholder="e.g. South Goa & Panaji" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="modal-form-group">
+            <label class="modal-label" for="new-trip-start">Start Date</label>
+            <input class="modal-input" type="date" id="new-trip-start">
+          </div>
+          <div class="modal-form-group">
+            <label class="modal-label" for="new-trip-end">End Date</label>
+            <input class="modal-input" type="date" id="new-trip-end">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="modal-form-group">
+            <label class="modal-label" for="new-trip-travelers">Travelers</label>
+            <input class="modal-input" type="number" id="new-trip-travelers" value="2" min="1">
+          </div>
+          <div class="modal-form-group">
+            <label class="modal-label" for="new-trip-budget">Budget in ₹</label>
+            <input class="modal-input" type="number" id="new-trip-budget" placeholder="e.g. 35000" min="0">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-submit-trip-form" type="submit" style="width: 100%; margin-top: 12px;">Create Trip Workspace</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADD ITINERARY ACTIVITY -->
+  <div id="modal-add-item" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-item-title" aria-hidden="true">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" data-close-modal type="button" aria-label="Close dialog">×</button>
+      <h2 id="modal-item-title" style="font-size: 1.4rem; margin-bottom: 6px;">Add Activity to Itinerary</h2>
+      <p style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: 16px;">
+        Costs are stored as estimated expenses in ₹ and kept distinct from actual recorded bills.
+      </p>
+
+      <form id="form-add-item">
+        <div class="modal-form-group">
+          <label class="modal-label" for="item-input-title">Activity / Place Name *</label>
+          <input class="modal-input" type="text" id="item-input-title" placeholder="e.g. Mehrangarh Fort Museum" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="modal-form-group">
+            <label class="modal-label" for="item-input-time">Start Time</label>
+            <input class="modal-input" type="time" id="item-input-time" value="10:00">
+          </div>
+          <div class="modal-form-group">
+            <label class="modal-label" for="item-input-duration">Duration (minutes)</label>
+            <input class="modal-input" type="number" id="item-input-duration" value="120" min="15" step="15">
+          </div>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="item-input-address">Location / Landmark</label>
+          <input class="modal-input" type="text" id="item-input-address" placeholder="e.g. Fort Rd, Jodhpur">
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="item-input-est-cost">Estimated Cost (₹)</label>
+          <input class="modal-input" type="number" id="item-input-est-cost" placeholder="e.g. 500" min="0">
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="item-input-notes">Helpful Notes</label>
+          <textarea class="modal-input" id="item-input-notes" rows="2" placeholder="Carry student ID for entry discount..."></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit" style="width: 100%; margin-top: 8px;">Add to Daily Plan</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: ADD BOOKING RECORD -->
+  <div id="modal-add-booking" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-booking-title" aria-hidden="true">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" data-close-modal type="button" aria-label="Close dialog">×</button>
+      <h2 id="modal-booking-title" style="font-size: 1.4rem; margin-bottom: 6px;">Add Personal Booking Note</h2>
+      
+      <!-- Crucial Product Disclosure Inside Modal -->
+      <div class="feature-booking-disclosure-note" style="margin-bottom: 16px;">
+        <strong>Important:</strong> This is a personal reference record. YatraSathi does not book, confirm, or modify external reservations.
+      </div>
+
+      <form id="form-add-booking">
+        <div class="modal-form-group">
+          <label class="modal-label" for="booking-input-cat">Booking Type *</label>
+          <select class="modal-input" id="booking-input-cat" required>
+            <option value="transport">Transport (Train, Flight, Bus, Taxi)</option>
+            <option value="stay">Stay (Hotel, Homestay, Resort)</option>
+            <option value="activity">Activity (Tour, Safari, Entry pass)</option>
+            <option value="other">Other Reservation</option>
+          </select>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="booking-input-provider">Provider Name *</label>
+          <input class="modal-input" type="text" id="booking-input-provider" placeholder="e.g. Air India, Taj Haveli, IRCTC" required>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="booking-input-pnr">PNR or Reference Code</label>
+          <input class="modal-input" type="text" id="booking-input-pnr" placeholder="e.g. AI-847291">
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="booking-input-amount">Paid Amount (₹)</label>
+          <input class="modal-input" type="number" id="booking-input-amount" placeholder="e.g. 4200" min="0">
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="booking-input-notes">Personal Notes</label>
+          <textarea class="modal-input" id="booking-input-notes" rows="2" placeholder="Terminal 3 gate details..."></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit" style="width: 100%; margin-top: 8px;">Save to Personal Vault</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: RECORD EXPENSE -->
+  <div id="modal-add-expense" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-expense-title" aria-hidden="true">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" data-close-modal type="button" aria-label="Close dialog">×</button>
+      <h2 id="modal-expense-title" style="font-size: 1.4rem; margin-bottom: 6px;">Record Actual Expense</h2>
+      <p style="font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: 16px;">
+        Tracks actual spending against your ₹ budget in integer paise.
+      </p>
+
+      <form id="form-add-expense">
+        <input type="hidden" id="expense-edit-id" value="">
+        <div class="modal-form-group">
+          <label class="modal-label" for="expense-input-trip">Trip *</label>
+          <select class="modal-input" id="expense-input-trip" required>
+            <!-- Populated dynamically by js/planner.js -->
+          </select>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="expense-input-amount">Amount in ₹ *</label>
+          <input class="modal-input" type="number" id="expense-input-amount" placeholder="e.g. 850" min="0.01" step="0.01" required>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="expense-input-cat">Expense Category *</label>
+          <select class="modal-input" id="expense-input-cat" required>
+            <option value="food">Food & Dining</option>
+            <option value="transport">Transport (Taxis, Auto, Metro)</option>
+            <option value="stay">Stay & Accommodation</option>
+            <option value="activities">Activities & Sightseeing</option>
+            <option value="other">Other Miscellaneous</option>
+          </select>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="expense-input-desc">Description / Memo *</label>
+          <input class="modal-input" type="text" id="expense-input-desc" placeholder="e.g. Dinner at Masala Chowk" required>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="expense-input-date">Date of Spend</label>
+          <input class="modal-input" type="date" id="expense-input-date" required>
+        </div>
+        <button class="btn btn-primary" type="submit" style="width: 100%; margin-top: 8px;">Log Actual Expense</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 5: DESTINATION DETAILS -->
+  <div id="modal-destination-detail" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-dest-title" aria-hidden="true">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <button class="modal-close-btn" data-close-modal type="button" aria-label="Close dialog">×</button>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+        <span class="trip-status-chip" id="modal-dest-region">North India</span>
+        <span class="dash-data-source-pill" id="modal-dest-duration">4–5 Days Suggested</span>
+      </div>
+      <h2 id="modal-dest-title" style="font-size: 1.5rem; margin-bottom: 4px;">Jaipur &amp; Jodhpur</h2>
+      <p id="modal-dest-state" style="font-size: 0.875rem; color: var(--color-text-secondary); margin-bottom: 12px;">Rajasthan • Best Season: Oct – Mar</p>
+      <p id="modal-dest-desc" style="font-size: 0.9375rem; line-height: 1.55; margin-bottom: 16px;"></p>
+
+      <div style="margin-bottom: 16px;">
+        <h3 style="font-size: 0.9375rem; font-weight: 800; margin-bottom: 8px;">Curated Highlights &amp; Estimated Costs</h3>
+        <div id="modal-dest-highlights" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--color-border-subtle);">
+        <button class="btn btn-primary" id="btn-modal-dest-plan" type="button" style="flex: 1;">Plan Trip Here</button>
+        <button class="btn btn-secondary" id="btn-modal-dest-save" type="button" style="flex: 1;">Save Destination</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accessible Toast Feedback Notice -->
+  <div id="toast-notice" class="toast-notice" role="status" aria-live="polite">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-saffron)" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    <span id="toast-message">Action confirmed</span>
+  </div>
+
+  <!-- Scripts: Planner Logic (Cloudflare Workers + Better Auth) -->
+  <script src="js/planner.js"></script>
+</body>
+</html>

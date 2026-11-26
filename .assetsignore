@@ -1,0 +1,16 @@
+node_modules
+.wrangler
+.git
+.env
+.env.*
+.dev.vars
+src
+migrations
+tests
+scripts
+project-root
+package.json
+package-lock.json
+wrangler.jsonc
+_redirects
+*.md

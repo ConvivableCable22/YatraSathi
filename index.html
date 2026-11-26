@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YatraSathi — Raaste naye, saath apna | India Trip Planning SaaS</title>
+  <meta name="description" content="YatraSathi brings Indian destination discovery, day-by-day itineraries, maps, personal booking records, and expense tracking into one private trip workspace.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Accessible Skip Navigation Link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Global Header & Navigation -->
+  <header class="site-header" id="site-header">
+    <div class="container nav-wrapper">
+      <a href="#home" class="brand-logo" aria-label="YatraSathi Home">
+        <div class="brand-icon" aria-hidden="true">YS</div>
+        <div class="brand-text">
+          <span class="brand-name">YatraSathi</span>
+          <span class="brand-tagline-sub">Raaste naye, saath apna</span>
+        </div>
+      </a>
+
+      <!-- Desktop & Mobile Navigation Menu -->
+      <nav aria-label="Primary Navigation">
+        <ul class="nav-menu" id="nav-menu">
+          <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+          <li><a href="#features" class="nav-link">Features</a></li>
+          <li><a href="#destinations" class="nav-link">Destinations</a></li>
+          <li><a href="#about" class="nav-link">About & Trust</a></li>
+          <li class="mobile-only-action">
+            <button class="btn btn-secondary btn-open-auth" data-mode="signin" type="button">Sign In</button>
+            <button class="btn btn-primary btn-open-auth" data-mode="signup" type="button">Start Planning Free</button>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Desktop Action Buttons -->
+      <div class="nav-actions">
+        <button class="btn btn-sign-in btn-open-auth" data-mode="signin" type="button">Sign In</button>
+        <button class="btn btn-primary btn-open-auth" data-mode="signup" type="button">
+          Start Planning
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </div>
+
+      <!-- Mobile Hamburger Button -->
+      <button class="mobile-toggle" id="mobile-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle navigation menu" type="button">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <!-- Hero Section -->
+    <section class="hero-section" id="home">
+      <div class="container">
+        <div class="hero-grid">
+          <div class="hero-content">
+            <div class="tagline-badge">
+              <span class="dot"></span>
+              <span>India Travel Planning, Reimagined</span>
+            </div>
+
+            <h1 class="hero-title">
+              Plan your India trip, with <span class="highlight">everything</span> in one place.
+            </h1>
+
+            <p class="hero-subtitle">
+              Discover destinations across India, build realistic day-by-day itineraries, and keep personal booking notes and trip expenses organized—whether you travel solo or with companions.
+            </p>
+
+            <div class="hero-cta-group">
+              <button class="btn btn-primary btn-open-auth" data-mode="signup" type="button">
+                Start Planning Free
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </button>
+              <a href="#destinations" class="btn btn-secondary">
+                Explore Destinations
+              </a>
+            </div>
+
+            <div class="hero-trust-bar">
+              <div class="trust-item">
+                <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span>Private by Default</span>
+              </div>
+              <div class="trust-item">
+                <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                <span>Paise-Accurate INR (₹)</span>
+              </div>
+              <div class="trust-item">
+                <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Read-Only Offline View</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Illustrative Mockup Card -->
+          <div class="hero-mockup-wrapper">
+            <div class="hero-floating-sticker">
+              <span class="sticker sticker-coral">Organizer • Not a Booking Agent</span>
+            </div>
+
+            <div class="hero-mockup-card" aria-label="Sample Trip Preview Card">
+              <div class="mockup-header">
+                <div>
+                  <span class="sticker" style="margin-bottom: 6px;">Sample Plan</span>
+                  <div class="mockup-destination">Rajasthan Heritage Loop</div>
+                  <div class="mockup-dates">Jaipur & Jodhpur • 5 Days • 2 Travelers</div>
+                </div>
+                <div class="mockup-budget-badge">
+                  <div class="mockup-budget-num">₹42,500</div>
+                  <div class="mockup-budget-label">Trip Budget</div>
+                </div>
+              </div>
+
+              <div class="mockup-timeline">
+                <div class="timeline-row">
+                  <span class="timeline-time">09:30 AM</span>
+                  <span class="timeline-title">Amer Fort & Stepwell</span>
+                  <span class="timeline-est">Est. ₹1,200</span>
+                </div>
+                <div class="timeline-row accent-coral">
+                  <span class="timeline-time">01:30 PM</span>
+                  <span class="timeline-title">Traditional Thali at MI Road</span>
+                  <span class="timeline-est">Est. ₹950</span>
+                </div>
+                <div class="timeline-row accent-saffron">
+                  <span class="timeline-time">04:45 PM</span>
+                  <span class="timeline-title">Hawa Mahal Sunset Walk</span>
+                  <span class="timeline-est">Est. ₹400</span>
+                </div>
+              </div>
+
+              <div class="mockup-footer">
+                <div class="avatar-stack">
+                  <div class="avatar-chip" title="Owner (You)">A</div>
+                  <div class="avatar-chip" title="Collaborator">R</div>
+                  <div class="avatar-chip" title="Collaborator">M</div>
+                  <span style="margin-left: 10px; font-weight: 600;">Shared Trip</span>
+                </div>
+                <div class="mockup-status-pill">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Saved Offline</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-floating-badge">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-teal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              <span>Personal Notes Vault</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Important Boundary Disclosure Banner -->
+    <aside class="boundary-banner" aria-label="Product Boundary Disclosure">
+      <div class="container">
+        <div class="boundary-banner-content">
+          <span class="boundary-badge">Important Notice</span>
+          <p>
+            <strong>YatraSathi organizes your travel plans.</strong> It does not make, confirm, pay for, change, or cancel external reservations. Personal booking records are private notes for reference.
+          </p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- How It Works Section -->
+    <section class="section-how-it-works" id="how-it-works">
+      <div class="container">
+        <span class="section-label">Planning Workflow</span>
+        <h2 class="section-title">Turn scattered travel ideas into a clear plan.</h2>
+        <p class="section-desc">
+          No more hopping between spreadsheets, messaging apps, and email receipts. Here is how YatraSathi keeps your trip together from idea to return.
+        </p>
+
+        <div class="steps-grid">
+          <article class="step-card">
+            <div class="step-number">01</div>
+            <h3 class="step-title">Discover & Save</h3>
+            <p class="step-desc">
+              Browse Indian destinations with transparent seasonal notes, regional highlights, and recommended visit lengths. Save your favorites with one click.
+            </p>
+            <div class="step-tag">
+              <span>Curated Indian Destinations</span>
+            </div>
+          </article>
+
+          <article class="step-card">
+            <div class="step-number">02</div>
+            <h3 class="step-title">Build Day by Day</h3>
+            <p class="step-desc">
+              Assemble daily itineraries with time blocks, durations, and activity notes. See estimated costs in ₹ to keep each day realistic and unhurried.
+            </p>
+            <div class="step-tag">
+              <span>Flexible Daily Itineraries</span>
+            </div>
+          </article>
+
+          <article class="step-card">
+            <div class="step-number">03</div>
+            <h3 class="step-title">Track Records & Spending</h3>
+            <p class="step-desc">
+              Store personal flight/train PNRs and hotel references in one spot. Record actual expenses in ₹ and keep actual spending distinct from initial estimates.
+            </p>
+            <div class="step-tag">
+              <span>Estimates vs. Actual Expenses</span>
+            </div>
+          </article>
+
+          <article class="step-card">
+            <div class="step-number">04</div>
+            <h3 class="step-title">Collaborate & Save Offline</h3>
+            <p class="step-desc">
+              Invite travel companions via secure, private links. Save your trip snapshot locally for reliable read-only access on trains or remote locations.
+            </p>
+            <div class="step-tag">
+              <span>Private & Offline-Ready</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section (Bento Grid) -->
+    <section class="section-features" id="features">
+      <div class="container">
+        <span class="section-label">All-in-One Capabilities</span>
+        <h2 class="section-title">Built specifically for exploring India.</h2>
+        <p class="section-desc">
+          Every capability is focused on the practical realities of traveling across India—intermittent network coverage, shared planning, and transparent expenses.
+        </p>
+
+        <div class="features-grid">
+          <!-- 1. Destination Discovery -->
+          <article class="feature-card feature-col-6">
+            <div class="feature-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+            </div>
+            <h3 class="feature-title">Indian Destination Discovery</h3>
+            <p class="feature-desc">
+              Explore diverse places across India with curated regional overviews, recommended days, and seasonal practicalities. Sourced transparently with editorial care.
+            </p>
+            <span class="feature-highlight-chip">Regional filters & seasonal guidance</span>
+          </article>
+
+          <!-- 2. Day-by-Day Itinerary -->
+          <article class="feature-card feature-col-6">
+            <div class="feature-icon-box accent-coral">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <h3 class="feature-title">Day-by-Day Itinerary Builder</h3>
+            <p class="feature-desc">
+              Organize your plans by day with custom time slots, estimated durations, and activity costs. Adjust your schedule easily without losing saved ideas.
+            </p>
+            <span class="feature-highlight-chip">Daily estimated cost totals</span>
+          </article>
+
+          <!-- 3. Maps & Routes -->
+          <article class="feature-card feature-col-4">
+            <div class="feature-icon-box accent-saffron">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+            </div>
+            <h3 class="feature-title">Map & List Geography</h3>
+            <p class="feature-desc">
+              Review your stops on a map view when connected, with a clear list-based fallback if maps fail to load or connectivity drops.
+            </p>
+            <span class="feature-highlight-chip">Reliable list fallback</span>
+          </article>
+
+          <!-- 4. Personal Booking Records -->
+          <article class="feature-card feature-col-4">
+            <div class="feature-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
+            <h3 class="feature-title">Personal Booking Vault</h3>
+            <p class="feature-desc">
+              Keep external transport PNRs, hotel voucher details, and activity notes in one place for quick access during travel.
+            </p>
+            <div class="feature-booking-disclosure-note">
+              <strong>Reminder:</strong> Personal reference notes only. YatraSathi does not make or confirm bookings.
+            </div>
+          </article>
+
+          <!-- 5. Budget & Expense Tracking -->
+          <article class="feature-card feature-col-4">
+            <div class="feature-icon-box accent-coral">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+            </div>
+            <h3 class="feature-title">Budget & Expense Tracking</h3>
+            <p class="feature-desc">
+              Set an overall budget in ₹ and log actual expenses by category (stay, food, transport, activities). Never confuses estimates with actual spending.
+            </p>
+            <span class="feature-highlight-chip">Paise-safe INR calculations</span>
+          </article>
+
+          <!-- 6. Private Collaboration -->
+          <article class="feature-card feature-col-6">
+            <div class="feature-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <h3 class="feature-title">Private Companion Collaboration</h3>
+            <p class="feature-desc">
+              Trips remain strictly private by default. Trip owners can invite companions using secure one-time invitation links. Every shared expense entry displays its author clearly.
+            </p>
+            <span class="feature-highlight-chip">Owner access control & author tags</span>
+          </article>
+
+          <!-- 7. Offline Trip Viewing -->
+          <article class="feature-card feature-col-6">
+            <div class="feature-icon-box accent-saffron">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+            </div>
+            <h3 class="feature-title">Read-Only Offline Trip Viewing</h3>
+            <p class="feature-desc">
+              Save your trip essentials (itinerary, notes, booking references, and expense totals) to your device for reliable offline viewing on trains or remote locations.
+            </p>
+            <span class="feature-highlight-chip">Zero connectivity panic</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Destination Inspiration Section -->
+    <section class="section-destinations" id="destinations">
+      <div class="container">
+        <div class="destinations-header">
+          <div>
+            <span class="section-label">Curated Inspiration</span>
+            <h2 class="section-title">Discover iconic corners of India.</h2>
+            <p class="section-desc" style="margin-bottom: 0;">
+              Sample itineraries and curated highlights designed around realistic travel paces. Filter by region below.
+            </p>
+          </div>
+
+          <!-- Region Filter Tabs -->
+          <div class="filter-tabs" role="tablist" aria-label="Destination Region Filters">
+            <button class="filter-tab active" data-filter="all" role="tab" aria-selected="true" type="button">All Regions</button>
+            <button class="filter-tab" data-filter="north" role="tab" aria-selected="false" type="button">North</button>
+            <button class="filter-tab" data-filter="south" role="tab" aria-selected="false" type="button">South</button>
+            <button class="filter-tab" data-filter="west" role="tab" aria-selected="false" type="button">West & Coast</button>
+            <button class="filter-tab" data-filter="east" role="tab" aria-selected="false" type="button">Heritage & Hills</button>
+          </div>
+        </div>
+
+        <!-- Destination Cards Grid -->
+        <div class="destinations-grid" id="destinations-grid">
+          <!-- Card 1: Jaipur & Rajasthan -->
+          <article class="destination-card dest-card-rajasthan" data-region="north">
+            <div class="dest-visual-header">
+              <span class="dest-badge-region">North India</span>
+              <span class="dest-duration-pill">4–5 Days Suggested</span>
+            </div>
+            <div class="dest-body">
+              <h3 class="dest-name">Jaipur & Amer</h3>
+              <div class="dest-state">Rajasthan</div>
+              <p class="dest-description">
+                Explore pink-terracotta facades, majestic hilltop forts, vibrant craft bazaars, and heritage astronomical observatories.
+              </p>
+              <div class="dest-highlights">
+                <span class="highlight-tag">Amer Fort</span>
+                <span class="highlight-tag">Hawa Mahal</span>
+                <span class="highlight-tag">Johari Bazaar</span>
+                <span class="highlight-tag">Nahargarh Sunset</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Card 2: Munnar & Alleppey -->
+          <article class="destination-card dest-card-kerala" data-region="south">
+            <div class="dest-visual-header">
+              <span class="dest-badge-region">South India</span>
+              <span class="dest-duration-pill">5–6 Days Suggested</span>
+            </div>
+            <div class="dest-body">
+              <h3 class="dest-name">Munnar & Alleppey</h3>
+              <div class="dest-state">Kerala</div>
+              <p class="dest-description">
+                Mist-covered tea gardens, cool mountain trails, and serene palm-lined backwater cruises along the canals.
+              </p>
+              <div class="dest-highlights">
+                <span class="highlight-tag">Tea Estates</span>
+                <span class="highlight-tag">Backwater Canals</span>
+                <span class="highlight-tag">Marari Beach</span>
+                <span class="highlight-tag">Kathakali</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Card 3: Leh & Nubra -->
+          <article class="destination-card dest-card-ladakh" data-region="north">
+            <div class="dest-visual-header">
+              <span class="dest-badge-region">High Altitude</span>
+              <span class="dest-duration-pill">6–7 Days Suggested</span>
+            </div>
+            <div class="dest-body">
+              <h3 class="dest-name">Leh & Nubra Valley</h3>
+              <div class="dest-state">Ladakh</div>
+              <p class="dest-description">
+                High mountain passes, Buddhist monasteries perched on cliffs, sand dunes under starry skies, and pristine alpine lakes.
+              </p>
+              <div class="dest-highlights">
+                <span class="highlight-tag">Pangong Tso</span>
+                <span class="highlight-tag">Khardung La</span>
+                <span class="highlight-tag">Thiksey Monastery</span>
+                <span class="highlight-tag">Diskit Dunes</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Card 4: Varanasi -->
+          <article class="destination-card dest-card-varanasi" data-region="east">
+            <div class="dest-visual-header">
+              <span class="dest-badge-region">Heritage & Spiritual</span>
+              <span class="dest-duration-pill">2–3 Days Suggested</span>
+            </div>
+            <div class="dest-body">
+              <h3 class="dest-name">Varanasi</h3>
+              <div class="dest-state">Uttar Pradesh</div>
+              <p class="dest-description">
+                Ancient river ghats along the Ganga, evening aarti ceremonies, labyrinthine heritage alleys, and legendary street food.
+              </p>
+              <div class="dest-highlights">
+                <span class="highlight-tag">Dashashwamedh Ghat</span>
+                <span class="highlight-tag">Assi Sunrise</span>
+                <span class="highlight-tag">Sarnath</span>
+                <span class="highlight-tag">Kashi Alleys</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Card 5: South Goa -->
+          <article class="destination-card dest-card-goa" data-region="west">
+            <div class="dest-visual-header">
+              <span class="dest-badge-region">Coastal West</span>
+              <span class="dest-duration-pill">4–5 Days Suggested</span>
+            </div>
+            <div class="dest-body">
+              <h3 class="dest-name">South Goa & Fontainhas</h3>
+              <div class="dest-state">Goa</div>
+              <p class="dest-description">
+                Quiet coconut-fringed shores, colorful Portuguese Latin quarters, spice plantations, and historic baroque churches.
+              </p>
+              <div class="dest-highlights">
+                <span class="highlight-tag">Palolem Beach</span>
+                <span class="highlight-tag">Fontainhas Walk</span>
+                <span class="highlight-tag">Spice Plantations</span>
+                <span class="highlight-tag">Cabo de Rama</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <p class="destinations-footnote">
+          *Note: Destination recommendations and highlighted activities are illustrative planning guides. Exact hours, entry tickets, and transit times should be checked locally.
+        </p>
+      </div>
+    </section>
+
+    <!-- About & Trust Information Section -->
+    <section class="section-about" id="about">
+      <div class="container">
+        <div class="about-grid">
+          <div>
+            <span class="section-label">Trust & Principles</span>
+            <h2 class="section-title">Why travelers trust YatraSathi with their journeys.</h2>
+            <p class="section-desc">
+              Trip planning tools often become cluttered or try to sell you sponsored bookings. YatraSathi is built with honest principles.
+            </p>
+
+            <div class="about-pillars">
+              <div class="pillar-item">
+                <div class="pillar-icon-wrapper">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </div>
+                <div>
+                  <h3 class="pillar-title">Trips are Private by Default</h3>
+                  <p class="pillar-desc">
+                    Your itineraries, bookings, and expenses belong to you. We never make your trips public or sell your travel dates.
+                  </p>
+                </div>
+              </div>
+
+              <div class="pillar-item">
+                <div class="pillar-icon-wrapper">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+                <div>
+                  <h3 class="pillar-title">Pure Integer Paise Calculations</h3>
+                  <p class="pillar-desc">
+                    Every budget and expense is calculated safely in Indian Rupees (₹) down to the exact paisa, preventing rounding errors.
+                  </p>
+                </div>
+              </div>
+
+              <div class="pillar-item">
+                <div class="pillar-icon-wrapper">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>
+                </div>
+                <div>
+                  <h3 class="pillar-title">Honest Boundary Disclosures</h3>
+                  <p class="pillar-desc">
+                    We clearly state that booking records are personal notes. We do not pretend to be an OTA or travel agent.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trust Callout Card -->
+          <div class="trust-callout-card">
+            <h3 class="trust-callout-title">
+              <span>The YatraSathi Commitment</span>
+            </h3>
+            <p class="trust-callout-desc">
+              We focus on reducing travel anxiety so you can enjoy the journey (*Raaste naye, saath apna*).
+            </p>
+
+            <ul class="trust-bullets">
+              <li class="trust-bullet-item">
+                <svg class="trust-bullet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>No fake urgency:</strong> We never push fake countdown timers or fabricated flight price spikes.</span>
+              </li>
+              <li class="trust-bullet-item">
+                <svg class="trust-bullet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Clear Estimates:</strong> Activity costs are labeled as estimates; recorded spending reflects your actual bills.</span>
+              </li>
+              <li class="trust-bullet-item">
+                <svg class="trust-bullet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Zero-Ad Clutter:</strong> Clean, mobile-friendly interface designed for clarity during travel.</span>
+              </li>
+              <li class="trust-bullet-item">
+                <svg class="trust-bullet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Offline Prepared:</strong> Saved essential details remain readable even when cell towers drop.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final Call to Action Section -->
+    <section class="section-cta" id="get-started">
+      <div class="container">
+        <div class="cta-box">
+          <h2>Ready to turn scattered ideas into your next great India trip?</h2>
+          <p>
+            Create your free account, pick your destination, and build an organized itinerary in minutes. No credit card required.
+          </p>
+          <div class="cta-buttons">
+            <button class="btn btn-primary btn-open-auth" data-mode="signup" type="button">
+              Start Planning Free
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+            <a href="#how-it-works" class="btn btn-outline-white">
+              See How It Works
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand-logo" style="margin-bottom: 12px;">
+            <div class="brand-icon" style="background: #273833;">YS</div>
+            <div class="brand-text">
+              <span class="brand-name">YatraSathi</span>
+            </div>
+          </div>
+          <p class="footer-brand-desc">
+            <em>Raaste naye, saath apna.</em> An India-focused travel planning workspace helping you discover destinations, organize itineraries, and keep bookings and spending together.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Navigation</h4>
+          <ul class="footer-links">
+            <li><a href="#home" class="footer-link">Home</a></li>
+            <li><a href="#how-it-works" class="footer-link">How It Works</a></li>
+            <li><a href="#features" class="footer-link">Features</a></li>
+            <li><a href="#destinations" class="footer-link">Destinations</a></li>
+            <li><a href="#about" class="footer-link">About & Trust</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Features</h4>
+          <ul class="footer-links">
+            <li><a href="#features" class="footer-link">Day Itineraries</a></li>
+            <li><a href="#features" class="footer-link">Maps & Fallbacks</a></li>
+            <li><a href="#features" class="footer-link">Personal Booking Vault</a></li>
+            <li><a href="#features" class="footer-link">Expense Tracking in ₹</a></li>
+            <li><a href="#features" class="footer-link">Read-Only Offline View</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Account Entry</h4>
+          <ul class="footer-links">
+            <li><button class="footer-link btn-open-auth" data-mode="signin" type="button" style="text-align: left; padding: 0;">Sign In to Account</button></li>
+            <li><button class="footer-link btn-open-auth" data-mode="signup" type="button" style="text-align: left; padding: 0;">Create Free Account</button></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-disclaimer-box">
+        <strong>Important Disclaimer:</strong> YatraSathi is an independent travel planning application. It is not an online travel agency (OTA), carrier, hotelier, or booking agent. YatraSathi does not process, confirm, change, or cancel tickets or reservations. Booking records stored by users are personal notes for organizational convenience.
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          © 2026 YatraSathi. All rights reserved.
+        </div>
+        <div>
+          Built with HTML, CSS & JavaScript • Accessible & Mobile-First
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Accessible Sign-In / Sign-Up Gateway Modal -->
+  <div id="auth-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" id="modal-close-btn" aria-label="Close dialog" type="button">×</button>
+
+      <div class="modal-tabs" role="tablist">
+        <button class="modal-tab-btn active" id="tab-signup-btn" role="tab" aria-selected="true" type="button">Create Account</button>
+        <button class="modal-tab-btn" id="tab-signin-btn" role="tab" aria-selected="false" type="button">Sign In</button>
+      </div>
+
+      <h2 id="modal-title" class="modal-title">Start Your Travel Workspace</h2>
+      <p id="modal-desc" class="modal-desc">
+        Join YatraSathi to start planning private itineraries across India.
+      </p>
+
+      <form id="auth-form" novalidate>
+        <div class="modal-form-group" id="name-group">
+          <label class="modal-label" for="user-name">Your Full Name</label>
+          <input class="modal-input" type="text" id="user-name" placeholder="e.g. Arnav Sharma" autocomplete="name" aria-describedby="user-name-error">
+          <span class="modal-field-error" id="user-name-error" role="alert" aria-live="polite"></span>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-label" for="user-email">Email Address</label>
+          <input class="modal-input" type="email" id="user-email" placeholder="name@example.com" required autocomplete="email" aria-describedby="user-email-error">
+          <span class="modal-field-error" id="user-email-error" role="alert" aria-live="polite"></span>
+        </div>
+
+        <div class="modal-form-group" id="password-group">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="modal-label" for="user-password">Password</label>
+            <button type="button" id="btn-open-forgot-password" style="background: none; border: none; color: var(--color-brand-teal, #0D6E6E); font-size: 0.8125rem; font-weight: 600; cursor: pointer; padding: 0; display: none;">Forgot password?</button>
+          </div>
+          <input class="modal-input" type="password" id="user-password" placeholder="At least 8 characters" required minlength="8" autocomplete="current-password" aria-describedby="user-password-error">
+          <span class="modal-field-error" id="user-password-error" role="alert" aria-live="polite"></span>
+        </div>
+
+        <div id="auth-form-error" class="modal-form-error" role="alert" aria-live="polite" hidden></div>
+
+        <button class="btn btn-primary modal-submit-btn" id="auth-submit-btn" type="submit">
+          Create Free Account
+        </button>
+
+        <p class="modal-entry-note">
+          🔒 Trips are private by default. By continuing, you agree to our fair-use planning guidelines and understand that YatraSathi is an organizer, not an external booking provider.
+        </p>
+      </form>
+
+      <!-- Forgot Password Inline Panel (Anti-Enumeration HTTP 202) -->
+      <form id="forgot-password-form" novalidate style="display: none;">
+        <div class="modal-form-group">
+          <label class="modal-label" for="forgot-email">Account Email Address</label>
+          <input class="modal-input" type="email" id="forgot-email" placeholder="name@example.com" required autocomplete="email" aria-describedby="forgot-email-error">
+          <span class="modal-field-error" id="forgot-email-error" role="alert" aria-live="polite"></span>
+        </div>
+        <div id="forgot-status-msg" role="status" aria-live="polite" style="display: none; font-size: 0.875rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; background: #F0F7F4; color: #1B4332;"></div>
+        <button class="btn btn-primary modal-submit-btn" id="btn-send-reset" type="submit">Send Reset Email</button>
+        <button type="button" id="btn-back-signin" style="width: 100%; margin-top: 8px; background: none; border: none; color: var(--color-text-secondary, #4A5568); font-size: 0.875rem; font-weight: 600; cursor: pointer; padding: 6px;">← Back to Sign In</button>
+      </form>
+
+      <!-- Complete Password Reset Panel (?resetToken=...) -->
+      <form id="reset-password-form" novalidate style="display: none;">
+        <div class="modal-form-group">
+          <label class="modal-label" for="reset-new-password">New Password</label>
+          <input class="modal-input" type="password" id="reset-new-password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
+        </div>
+        <div id="reset-status-msg" role="status" aria-live="polite" style="display: none; font-size: 0.875rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; background: #F0F7F4; color: #1B4332;"></div>
+        <button class="btn btn-primary modal-submit-btn" id="btn-complete-reset" type="submit">Update Password</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Feedback -->
+  <div id="toast-notice" class="toast-notice" role="status" aria-live="polite">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-saffron)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    <span id="toast-message">Message text</span>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

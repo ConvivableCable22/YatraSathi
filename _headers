@@ -1,0 +1,23 @@
+# Security and Cache Headers for YatraSathi Static Hosting
+# Compatible with Cloudflare Pages and Netlify
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none';
+
+# Static asset caching
+/css/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/js/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# HTML pages should always validate freshness
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/app.html
+  Cache-Control: public, max-age=0, must-revalidate

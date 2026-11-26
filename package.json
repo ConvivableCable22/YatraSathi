@@ -1,0 +1,20 @@
+{
+  "name": "yatrasathi-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "YatraSathi travel planning workspace on Cloudflare Workers, Static Assets, D1, Queues, and Better Auth",
+  "scripts": {
+    "preview": "node scripts/preview-server.js",
+    "dev": "wrangler dev --ip 127.0.0.1 --port 8787",
+    "deploy": "wrangler deploy",
+    "seed:local-demo": "node scripts/seed-local-demo.mjs",
+    "test": "node --test tests/email-delivery.test.mjs",
+    "verify": "node scripts/verify-app.js"
+  },
+  "dependencies": {
+    "better-auth": "1.7.28"
+  },
+  "devDependencies": {
+    "wrangler": "4.168.0"
+  }
+}
