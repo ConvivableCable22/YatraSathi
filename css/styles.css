@@ -387,6 +387,34 @@ button:disabled {
   text-decoration: none;
 }
 
+.brand-wordmark-img {
+  height: 44px;
+  width: auto;
+  display: block;
+}
+
+.brand-wordmark-footer {
+  height: 48px;
+}
+
+.brand-auth-lockup {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.brand-auth-img {
+  height: 38px;
+  width: auto;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .brand-wordmark-img {
+    height: 36px;
+  }
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
@@ -413,6 +441,8 @@ button:disabled {
   gap: 10px;
   min-height: 44px;
   margin-bottom: 12px;
+}
+
 .brand-icon {
   width: 40px;
   height: 40px;
