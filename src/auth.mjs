@@ -6,9 +6,15 @@
 import { betterAuth } from 'better-auth';
 
 export function createAuth(env, requestOrigin) {
-  const baseURL = env.APP_BASE_URL || requestOrigin || 'http://127.0.0.1:8787';
+  const isLocalRequest = Boolean(
+    requestOrigin &&
+      (requestOrigin.startsWith('http://127.0.0.1:') || requestOrigin.startsWith('http://localhost:'))
+  );
+  const baseURL = isLocalRequest
+    ? requestOrigin
+    : (env.APP_BASE_URL || requestOrigin || 'http://127.0.0.1:8787');
   const trustedOrigins = [baseURL];
-  const isLocalDev = baseURL.includes('127.0.0.1:8787') || baseURL.includes('localhost:8787');
+  const isLocalDev = isLocalRequest || baseURL.includes('127.0.0.1:') || baseURL.includes('localhost:');
   if (isLocalDev) {
     trustedOrigins.push(
       'http://127.0.0.1:8787',
@@ -16,6 +22,14 @@ export function createAuth(env, requestOrigin) {
       'http://127.0.0.1:5500',
       'http://localhost:5500'
     );
+  }
+
+  const socialProviders = {};
+  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+    socialProviders.google = {
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET
+    };
   }
 
   return betterAuth({
@@ -27,6 +41,7 @@ export function createAuth(env, requestOrigin) {
       enabled: true,
       minPasswordLength: 8
     },
+    socialProviders,
     advanced: {
       ipAddress: {
         ipAddressHeaders: ['cf-connecting-ip']

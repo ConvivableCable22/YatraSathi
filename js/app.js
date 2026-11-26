@@ -545,5 +545,36 @@
     initHeaderScroll();
     initAuthModal();
     initDestinationFilters();
+
+    const btnGoogle = document.getElementById('btn-google-signin');
+    if (btnGoogle) {
+      btnGoogle.addEventListener('click', async function () {
+        btnGoogle.disabled = true;
+        const originalText = btnGoogle.textContent;
+        btnGoogle.textContent = 'Connecting to Google...';
+        try {
+          const resp = await fetch(getApiBase() + '/api/auth/sign-in/social', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              provider: 'google',
+              callbackURL: '/app.html'
+            })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (resp.ok && data && data.url) {
+            window.location.href = data.url;
+            return;
+          }
+          showToast((data && data.message) || 'Google Sign-In is not configured on this environment yet.');
+        } catch (err) {
+          showToast('Google Sign-In requires the Cloudflare Worker backend.');
+        } finally {
+          btnGoogle.disabled = false;
+          btnGoogle.textContent = originalText;
+        }
+      });
+    }
   });
 })();
