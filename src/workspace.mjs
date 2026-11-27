@@ -10,9 +10,11 @@
 
 import {
   STATE_CATALOG,
+  findVerifiedPlaceById,
   generateFlexibleItinerary,
   validateStateAndDestinations
 } from './destinations.mjs';
+import { generateGeminiItinerary, generateGeminiJaipurOptions } from './gemini.mjs';
 
 const VALID_TRIP_STATUSES = new Set(['planning', 'upcoming', 'active', 'completed', 'archived']);
 const VALID_EXPENSE_CATEGORIES = new Set(['transport', 'stay', 'food', 'activities', 'other']);
@@ -187,7 +189,7 @@ async function handleBootstrap(sessionUser, env) {
 
     const itRes = await db
       .prepare(
-        `SELECT id, trip_id, day_key, time_label, duration_label, title, location, notes, estimated_cost_paise, sort_order, created_at
+        `SELECT id, trip_id, place_id, day_key, time_label, duration_label, title, location, notes, estimated_cost_paise, lat, lng, sort_order, created_at
          FROM itinerary_items
          WHERE trip_id IN (${placeholders})
          ORDER BY sort_order ASC, created_at ASC`
@@ -197,6 +199,7 @@ async function handleBootstrap(sessionUser, env) {
     itineraryItems = (itRes.results || []).map(r => ({
       id: r.id,
       tripId: r.trip_id,
+      placeId: r.place_id || null,
       dayKey: r.day_key,
       timeLabel: r.time_label,
       durationLabel: r.duration_label,
@@ -204,6 +207,8 @@ async function handleBootstrap(sessionUser, env) {
       location: r.location,
       notes: r.notes,
       estimatedCostPaise: Number(r.estimated_cost_paise) || 0,
+      lat: r.lat !== null && r.lat !== undefined ? Number(r.lat) : null,
+      lng: r.lng !== null && r.lng !== undefined ? Number(r.lng) : null,
       sortOrder: Number(r.sort_order) || 0
     }));
 
@@ -531,6 +536,7 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
     const generatedItems = generatedPlan.map((item, idx) => ({
       id: `it-${crypto.randomUUID()}`,
       tripId,
+      placeId: item.placeId || null,
       dayKey: item.dayKey,
       timeLabel: item.timeLabel,
       durationLabel: item.durationLabel,
@@ -538,6 +544,8 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
       location: item.location,
       notes: item.notes,
       estimatedCostPaise: item.estimatedCostPaise,
+      lat: item.lat ?? null,
+      lng: item.lng ?? null,
       sortOrder: idx
     }));
 
@@ -556,10 +564,10 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
       ...generatedItems.map(it =>
         db
           .prepare(
-            `INSERT INTO itinerary_items (id, trip_id, day_key, time_label, duration_label, title, location, notes, estimated_cost_paise, sort_order, created_by, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO itinerary_items (id, trip_id, place_id, day_key, time_label, duration_label, title, location, notes, estimated_cost_paise, lat, lng, sort_order, created_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
-          .bind(it.id, tripId, it.dayKey, it.timeLabel, it.durationLabel, it.title, it.location, it.notes, it.estimatedCostPaise, it.sortOrder, userId, now)
+          .bind(it.id, tripId, it.placeId, it.dayKey, it.timeLabel, it.durationLabel, it.title, it.location, it.notes, it.estimatedCostPaise, it.lat, it.lng, it.sortOrder, userId, now)
       )
     ]);
 
@@ -677,6 +685,216 @@ export async function handleWorkspaceRequest(request, env, sessionUser) {
     await recordActivity(db, userId, tripId, 'trip_updated', `Updated trip "${name}"`, now);
 
     return jsonResponse({ ok: true });
+  }
+
+  const aiItMatch = path.match(/^\/api\/workspace\/trips\/([^/]+)\/ai-itinerary$/);
+  if (aiItMatch && method === 'POST') {
+    const tripId = decodeURIComponent(aiItMatch[1]);
+    const membership = await getTripMembership(db, tripId, userId);
+    if (!membership || membership.role !== 'owner') {
+      return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Only the trip owner can generate an AI itinerary for this trip.' }, 403);
+    }
+
+    const tripRow = await db.prepare(`SELECT id, theme, selected_places_json, start_date, end_date FROM trips WHERE id = ? AND owner_id = ?`).bind(tripId, userId).first();
+    if (!tripRow) {
+      return jsonResponse({ ok: false, code: 'NOT_FOUND', message: 'Trip not found.' }, 404);
+    }
+
+    // Per-user AI rate limit (15s cooldown, max 10 requests/hour)
+    const cooldownKey = `gemini_ai:${userId}`;
+    const cooldownRow = await db
+      .prepare(`SELECT last_sent_at, window_count, window_started_at FROM email_cooldowns WHERE scope_key = ?`)
+      .bind(cooldownKey)
+      .first();
+    if (cooldownRow) {
+      if (now - Number(cooldownRow.last_sent_at) < 15_000) {
+        return jsonResponse({ ok: false, code: 'AI_RATE_LIMITED', message: 'Please wait 15 seconds between AI itinerary requests.' }, 429);
+      }
+      const withinHour = now - Number(cooldownRow.window_started_at) < 3_600_000;
+      if (withinHour && Number(cooldownRow.window_count) >= 10) {
+        return jsonResponse({ ok: false, code: 'AI_RATE_LIMITED', message: 'Hourly AI itinerary limit reached. Please retry later or plan manually.' }, 429);
+      }
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const stateKey = String(body.stateKey || tripRow.theme || 'rajasthan').trim();
+    const rawPlaces = Array.isArray(body.selectedPlaces)
+      ? body.selectedPlaces
+      : safeJsonParse(tripRow.selected_places_json, []);
+    const fallbackPlaces = (!Array.isArray(rawPlaces) || rawPlaces.length === 0) && STATE_CATALOG[stateKey]
+      ? [Object.keys(STATE_CATALOG[stateKey].destinations)[0]]
+      : rawPlaces;
+
+    const validation = validateStateAndDestinations(stateKey, fallbackPlaces);
+    if (!validation.ok) {
+      return jsonResponse({ ok: false, code: validation.code, message: validation.message }, 400);
+    }
+
+    // First version of Gemini AI itinerary generation supports Jaipur only
+    if (stateKey !== 'rajasthan' || validation.destinationIds.length !== 1 || validation.destinationIds[0] !== 'jaipur') {
+      return jsonResponse({
+        ok: false,
+        code: 'AI_DESTINATION_UNSUPPORTED',
+        message: 'Gemini AI itinerary generation currently supports Jaipur only. You can plan other destinations manually.'
+      }, 400);
+    }
+
+    let durationDays = Math.round(Number(body.durationDays) || 0);
+    if (!durationDays && tripRow.start_date && tripRow.end_date) {
+      const diff = Math.round((new Date(tripRow.end_date) - new Date(tripRow.start_date)) / 86_400_000) + 1;
+      if (Number.isFinite(diff) && diff >= 1) durationDays = diff;
+    }
+    durationDays = Math.max(1, Math.min(14, durationDays || 3));
+
+    const preferences = {
+      pacing: body.pacing || 'relaxed',
+      budgetPref: body.budgetPref || 'balanced',
+      interests: Array.isArray(body.interests) ? body.interests : ['heritage', 'food']
+    };
+
+    // Update rate-limit window before calling Gemini
+    const nextWindowStart = cooldownRow && (now - Number(cooldownRow.window_started_at) < 3_600_000)
+      ? Number(cooldownRow.window_started_at)
+      : now;
+    const nextWindowCount = cooldownRow && (now - Number(cooldownRow.window_started_at) < 3_600_000)
+      ? Number(cooldownRow.window_count) + 1
+      : 1;
+    await db
+      .prepare(
+        `INSERT INTO email_cooldowns (scope_key, last_sent_at, window_count, window_started_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(scope_key) DO UPDATE SET
+           last_sent_at = excluded.last_sent_at,
+           window_count = excluded.window_count,
+           window_started_at = excluded.window_started_at`
+      )
+      .bind(cooldownKey, now, nextWindowCount, nextWindowStart)
+      .run();
+
+    let aiResult;
+    try {
+      if (Array.isArray(body.selectedPlaceIds)) {
+        aiResult = await generateGeminiJaipurOptions(
+          { selectedPlaceIds: body.selectedPlaceIds, durationDays, preferences },
+          env
+        );
+        return jsonResponse({
+          ok: true,
+          tripId,
+          model: aiResult.model,
+          durationDays: aiResult.durationDays,
+          options: aiResult.options,
+          unmatchedCount: aiResult.unmatchedCount,
+          disclaimer: 'AI-generated suggestions only — illustrative routes, not verified live directions, travel times, opening hours, availability, or prices.'
+        });
+      }
+
+      aiResult = await generateGeminiItinerary(
+        { stateKey, destinationIds: validation.destinationIds, durationDays, preferences },
+        env
+      );
+    } catch (err) {
+      return jsonResponse(
+        { ok: false, code: err?.code || 'GEMINI_ERROR', message: err?.message || 'Could not generate AI itinerary.' },
+        err?.status || 502
+      );
+    }
+
+    const savedItems = aiResult.items.map((item, idx) => ({
+      id: `it-${crypto.randomUUID()}`,
+      tripId,
+      placeId: item.placeId,
+      dayKey: item.dayKey,
+      timeLabel: item.timeLabel,
+      durationLabel: item.durationLabel,
+      title: item.title,
+      location: item.location,
+      notes: item.notes,
+      estimatedCostPaise: item.estimatedCostPaise,
+      lat: item.lat,
+      lng: item.lng,
+      sortOrder: idx
+    }));
+
+    await db.batch([
+      db.prepare(`DELETE FROM itinerary_items WHERE trip_id = ?`).bind(tripId),
+      ...savedItems.map(it =>
+        db
+          .prepare(
+            `INSERT INTO itinerary_items (id, trip_id, place_id, day_key, time_label, duration_label, title, location, notes, estimated_cost_paise, lat, lng, sort_order, created_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(it.id, tripId, it.placeId, it.dayKey, it.timeLabel, it.durationLabel, it.title, it.location, it.notes, it.estimatedCostPaise, it.lat, it.lng, it.sortOrder, userId, now)
+      )
+    ]);
+
+    await recordActivity(db, userId, tripId, 'ai_itinerary_generated', `Generated ${durationDays}-day Gemini itinerary suggestion`, now);
+
+    return jsonResponse({
+      ok: true,
+      tripId,
+      model: aiResult.model,
+      unmatchedCount: aiResult.unmatchedCount,
+      disclaimer: 'AI-generated suggestions only — not verified live directions, travel times, opening hours, availability, or prices.',
+      itineraryItems: savedItems
+    });
+  }
+
+  const itReplaceMatch = path.match(/^\/api\/workspace\/trips\/([^/]+)\/itinerary$/);
+  if (itReplaceMatch && method === 'PUT') {
+    const tripId = decodeURIComponent(itReplaceMatch[1]);
+    const membership = await getTripMembership(db, tripId, userId);
+    if (!membership || membership.role !== 'owner') {
+      return jsonResponse({ ok: false, code: 'FORBIDDEN', message: 'Only the trip owner can save this itinerary.' }, 403);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const rawItems = Array.isArray(body.items) ? body.items.slice(0, 40) : [];
+    const savedItems = [];
+
+    for (let idx = 0; idx < rawItems.length; idx++) {
+      const raw = rawItems[idx];
+      const placeId = raw?.placeId ? String(raw.placeId).trim() : null;
+      const verified = placeId ? findVerifiedPlaceById('rajasthan', ['jaipur'], placeId) : null;
+
+      if (placeId && !verified) {
+        return jsonResponse({ ok: false, code: 'INVALID_PLACE', message: `Unsupported place "${placeId}".` }, 400);
+      }
+
+      const title = verified ? verified.title : String(raw?.title || '').trim().slice(0, 140);
+      if (!title) continue;
+
+      savedItems.push({
+        id: `it-${crypto.randomUUID()}`,
+        tripId,
+        placeId: verified ? verified.placeId : null,
+        dayKey: String(raw?.dayKey || 'day-1').slice(0, 32),
+        timeLabel: String(raw?.timeLabel || verified?.timeLabel || '10:00 AM').slice(0, 32),
+        durationLabel: String(raw?.durationLabel || verified?.durationLabel || '60 mins').slice(0, 32),
+        title,
+        location: verified ? verified.location : String(raw?.location || 'Jaipur, Rajasthan').slice(0, 140),
+        notes: String(raw?.notes || verified?.notes || '').slice(0, 300),
+        estimatedCostPaise: verified ? verified.estimatedCostPaise : Math.max(0, Math.round(Number(raw?.estimatedCostPaise) || 0)),
+        lat: verified ? verified.lat : null,
+        lng: verified ? verified.lng : null,
+        sortOrder: idx
+      });
+    }
+
+    await db.batch([
+      db.prepare(`DELETE FROM itinerary_items WHERE trip_id = ?`).bind(tripId),
+      ...savedItems.map(it =>
+        db
+          .prepare(
+            `INSERT INTO itinerary_items (id, trip_id, place_id, day_key, time_label, duration_label, title, location, notes, estimated_cost_paise, lat, lng, sort_order, created_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(it.id, tripId, it.placeId, it.dayKey, it.timeLabel, it.durationLabel, it.title, it.location, it.notes, it.estimatedCostPaise, it.lat, it.lng, it.sortOrder, userId, now)
+      )
+    ]);
+
+    await recordActivity(db, userId, tripId, 'itinerary_saved', `Saved ${savedItems.length}-stop Jaipur itinerary`, now);
+    return jsonResponse({ ok: true, tripId, itineraryItems: savedItems });
   }
 
   const itCreateMatch = path.match(/^\/api\/workspace\/trips\/([^/]+)\/itinerary$/);

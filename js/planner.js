@@ -19,53 +19,20 @@
   // --- 1. Initial State ---
   const state = {
     activeSection: 'dashboard',
-    activeTripId: 'trip-1',
+    activeTripId: null,
     isOffline: false,
     isAuthenticated: false,
     userId: null,
     uiMode: 'normal',
-    userDisplayName: 'Arnav Sharma',
-    dataSourceLabel: 'Prototype Mode',
+    userDisplayName: 'Traveler',
+    dataSourceLabel: 'Cloudflare D1',
     savedDestinations: new Set(),
     unlockedBadges: new Set(),
     itineraryItems: [],
     bookingNotes: [],
     reviews: [],
-    recentActivity: [
-      { text: 'Loaded Rajasthan Heritage Loop workspace', time: 'Just now' }
-    ],
-    trips: [
-      {
-        id: 'trip-1',
-        name: 'Rajasthan Heritage Loop',
-        destination: 'Jaipur & Jodhpur',
-        startDate: '2026-11-28',
-        endDate: '2026-12-02',
-        travelers: 2,
-        budget: 45000,
-        spent: 18400,
-        estimated: 14200,
-        theme: 'rajasthan',
-        status: 'upcoming',
-        bookingsCount: 2,
-        role: 'Owner'
-      },
-      {
-        id: 'trip-2',
-        name: 'Kerala Mist & Backwaters',
-        destination: 'Munnar & Alleppey',
-        startDate: '2027-01-14',
-        endDate: '2027-01-19',
-        travelers: 3,
-        budget: 38000,
-        spent: 4200,
-        estimated: 12500,
-        theme: 'kerala',
-        status: 'upcoming',
-        bookingsCount: 1,
-        role: 'Owner'
-      }
-    ]
+    recentActivity: [],
+    trips: []
   };
 
   function scopedStoragePrefix(prefix) {
@@ -299,7 +266,12 @@
     document.body.style.overflow = '';
   }
 
+  const COMING_SOON_SECTIONS = new Set(['bookings', 'expenses', 'achievements', 'trip-reviews']);
+
   function switchSection(sectionId) {
+    if (COMING_SOON_SECTIONS.has(sectionId)) {
+      return;
+    }
     // 1. Update Sidebar Nav Items
     sidebarNavItems.forEach(item => {
       const target = item.getAttribute('data-section');
@@ -360,8 +332,13 @@
   function initNavigation() {
     // Desktop & Drawer Sidebar clicks
     sidebarNavItems.forEach(item => {
-      item.addEventListener('click', function () {
+      item.addEventListener('click', function (e) {
         const sectionId = item.getAttribute('data-section');
+        if (item.disabled || item.getAttribute('aria-disabled') === 'true' || COMING_SOON_SECTIONS.has(sectionId)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         if (sectionId) switchSection(sectionId);
       });
     });
@@ -428,21 +405,33 @@
 
   // --- 4. Active Trip Context Synchronization ---
   function syncActiveTripUI(tripId) {
-    const trip = state.trips.find(t => t.id === tripId) || state.trips[0];
-    if (!trip) return;
+    const trip = state.trips.find(t => t.id === tripId) || state.trips[0] || null;
+    const sidebarTripName = document.getElementById('sidebar-active-trip-name');
+    const sidebarTripMeta = document.getElementById('sidebar-active-trip-meta');
+    const itineraryName = document.getElementById('itinerary-active-trip-name');
+    const itinerarySubtitle = document.getElementById('itinerary-trip-subtitle');
+    const mapsName = document.getElementById('maps-active-trip-name');
+
+    if (!trip) {
+      state.activeTripId = null;
+      if (sidebarTripName) sidebarTripName.textContent = 'No active trip';
+      if (sidebarTripMeta) sidebarTripMeta.textContent = 'Create a Jaipur trip to start';
+      if (itineraryName) itineraryName.textContent = 'Jaipur';
+      if (itinerarySubtitle) itinerarySubtitle.innerHTML = 'Select or create a trip (starting with <strong>Jaipur</strong>) to build your day-by-day itinerary.';
+      if (mapsName) mapsName.textContent = 'your active trip';
+      renderActiveTripItineraryList(null);
+      return;
+    }
     state.activeTripId = trip.id;
 
     // Sidebar Active Context Box
-    const sidebarTripName = document.getElementById('sidebar-active-trip-name');
-    const sidebarTripMeta = document.getElementById('sidebar-active-trip-meta');
     if (sidebarTripName) sidebarTripName.textContent = trip.name;
     if (sidebarTripMeta) sidebarTripMeta.textContent = `${trip.destination} • ${trip.startDate} – ${trip.endDate}`;
 
     // Section 3: Itinerary Builder Header
-    const itineraryName = document.getElementById('itinerary-active-trip-name');
-    const itinerarySubtitle = document.getElementById('itinerary-trip-subtitle');
     if (itineraryName) itineraryName.textContent = trip.name;
     if (itinerarySubtitle) itinerarySubtitle.innerHTML = `Planning for <strong>${trip.name}</strong> • ${trip.destination}`;
+    if (mapsName) mapsName.textContent = trip.name;
 
     // Section 6: Expenses Financial KPI Grid
     const expBudget = document.getElementById('exp-total-budget');
@@ -686,7 +675,7 @@
         if (sidebarSavedBadge) {
           sidebarSavedBadge.textContent = state.savedDestinations.size > 0
             ? `${state.savedDestinations.size} Saved`
-            : '5 Curated';
+            : '1 Curated';
         }
       });
     });
@@ -694,13 +683,18 @@
     // "Plan Trip Here" buttons from cards
     document.querySelectorAll('.btn-plan-from-dest').forEach(btn => {
       btn.addEventListener('click', function () {
-        const dest = btn.getAttribute('data-dest');
+        const dest = btn.getAttribute('data-dest') || 'Jaipur';
         const modalCreate = document.getElementById('modal-create-trip');
         openModal(modalCreate);
-        const destInput = document.getElementById('new-trip-destination');
+        const stateSel = document.getElementById('new-trip-state');
+        if (stateSel) {
+          stateSel.value = 'rajasthan';
+          renderStateDestinationChips('rajasthan', ['jaipur']);
+        }
         const nameInput = document.getElementById('new-trip-name');
-        if (destInput) destInput.value = dest;
-        if (nameInput) nameInput.value = `${dest.split(' ')[0]} Exploration`;
+        if (nameInput) nameInput.value = `${dest.split(' ')[0]} Trip`;
+        const durInput = document.getElementById('new-trip-duration');
+        if (durInput) durInput.focus();
       });
     });
 
@@ -709,43 +703,7 @@
       rajasthan: {
         label: 'Rajasthan',
         destinations: {
-          jaipur: { label: 'Jaipur', placesCount: 5 },
-          jodhpur: { label: 'Jodhpur', placesCount: 4 },
-          jaisalmer: { label: 'Jaisalmer', placesCount: 4 },
-          udaipur: { label: 'Udaipur', placesCount: 4 }
-        }
-      },
-      kerala: {
-        label: 'Kerala',
-        destinations: {
-          munnar: { label: 'Munnar', placesCount: 4 },
-          alleppey: { label: 'Alleppey', placesCount: 3 },
-          kochi: { label: 'Kochi', placesCount: 3 },
-          thekkady: { label: 'Thekkady', placesCount: 2 }
-        }
-      },
-      goa: {
-        label: 'Goa',
-        destinations: {
-          panaji: { label: 'Panaji & Old Goa', placesCount: 3 },
-          'north-goa': { label: 'North Goa', placesCount: 2 },
-          'south-goa': { label: 'South Goa', placesCount: 2 }
-        }
-      },
-      'uttar-pradesh': {
-        label: 'Uttar Pradesh',
-        destinations: {
-          varanasi: { label: 'Varanasi', placesCount: 3 },
-          agra: { label: 'Agra', placesCount: 3 },
-          lucknow: { label: 'Lucknow', placesCount: 2 }
-        }
-      },
-      ladakh: {
-        label: 'Ladakh',
-        destinations: {
-          leh: { label: 'Leh', placesCount: 2 },
-          nubra: { label: 'Nubra Valley', placesCount: 2 },
-          pangong: { label: 'Pangong Tso', placesCount: 1 }
+          jaipur: { label: 'Jaipur', placesCount: 5 }
         }
       }
     };
@@ -1424,7 +1382,7 @@
     if (sidebarSavedBadge) {
       sidebarSavedBadge.textContent = state.savedDestinations.size > 0
         ? `${state.savedDestinations.size} Saved`
-        : '5 Curated';
+        : '1 Curated';
     }
 
     state.trips = Array.isArray(payload.trips) ? payload.trips : [];
@@ -1560,174 +1518,70 @@
     const DEST_CATALOG = {
       rajasthan: {
         places: [
-          { id: 'raj-1', name: 'Heritage Haveli (Bani Park)', visitTime: '09:30 AM – 10:15 AM', durationMins: 45, location: 'Bani Park, Jaipur', estCost: 0, notes: 'Base check-in & morning chai.', lat: 26.9260, lng: 75.7920 },
-          { id: 'raj-2', name: 'City Palace & Jantar Mantar', visitTime: '10:45 AM – 01:15 PM', durationMins: 150, location: 'Old City, Pink City', estCost: 1200, notes: 'Composite ticket includes observatory.', lat: 26.9258, lng: 75.8237 },
-          { id: 'raj-3', name: 'Hawa Mahal & Bapu Bazaar', visitTime: '02:00 PM – 03:45 PM', durationMins: 105, location: 'Sireh Deori, Jaipur', estCost: 450, notes: 'Iconic facade & local craft lanes.', lat: 26.9239, lng: 75.8267 },
-          { id: 'raj-4', name: 'Nahargarh Fort Sunset', visitTime: '04:30 PM – 06:30 PM', durationMins: 120, location: 'Aravalli Hills, Jaipur', estCost: 350, notes: 'Panoramic twilight city views.', lat: 26.9373, lng: 75.8155 },
-          { id: 'raj-5', name: 'Amer Fort & Stepwell', visitTime: '09:00 AM – 11:30 AM', durationMins: 150, location: 'Amer, Jaipur', estCost: 800, notes: 'Hilltop palace & Panna Meena Kund.', lat: 26.9855, lng: 75.8513 }
-        ],
-        ai: [
-          {
-            id: 'raj-ai-scenic',
-            title: 'Option 1 — Scenic Heritage Loop',
-            recommended: true,
-            desc: 'Balanced pacing through Pink City palaces, bazaar lanes, and Aravalli sunset.',
-            perks: ['Scenic hill approach', 'Golden-hour fort finish'],
-            totalKm: 18,
-            totalDuration: '~55 min transit (est.)',
-            stops: [
-              { placeId: 'raj-1', legKm: 0, legMin: 0 },
-              { placeId: 'raj-2', legKm: 4, legMin: 15 },
-              { placeId: 'raj-3', legKm: 2, legMin: 8 },
-              { placeId: 'raj-4', legKm: 12, legMin: 32 }
-            ]
-          },
-          {
-            id: 'raj-ai-quick',
-            title: 'Option 2 — Quick Royal Highlights',
-            recommended: false,
-            desc: 'Compact inner-city circuit with minimal hill transit.',
-            perks: ['Shortest total distance', 'Fewer road transfers'],
-            totalKm: 13,
-            totalDuration: '~38 min transit (est.)',
-            stops: [
-              { placeId: 'raj-1', legKm: 0, legMin: 0 },
-              { placeId: 'raj-5', legKm: 9, legMin: 24 },
-              { placeId: 'raj-2', legKm: 4, legMin: 14 }
-            ]
-          }
-        ],
-        fast: [
-          {
-            id: 'raj-fast-1',
-            title: 'Option 1 — Direct Core Express',
-            recommended: true,
-            desc: 'Minimises cross-city travel by grouping Old City landmarks together.',
-            perks: ['Minimal travel time', 'Walkable Old City cluster'],
-            totalKm: 6,
-            totalDuration: '~22 min transit (est.)',
-            stops: [
-              { placeId: 'raj-1', legKm: 0, legMin: 0 },
-              { placeId: 'raj-2', legKm: 4, legMin: 15 },
-              { placeId: 'raj-3', legKm: 2, legMin: 7 }
-            ]
-          },
-          {
-            id: 'raj-fast-2',
-            title: 'Option 2 — Morning Fort & Palace',
-            recommended: false,
-            desc: 'Early Amer ascent before midday traffic builds.',
-            perks: ['Morning-first sequence', '2 major landmarks'],
-            totalKm: 13,
-            totalDuration: '~38 min transit (est.)',
-            stops: [
-              { placeId: 'raj-5', legKm: 0, legMin: 0 },
-              { placeId: 'raj-2', legKm: 9, legMin: 24 },
-              { placeId: 'raj-1', legKm: 4, legMin: 14 }
-            ]
-          }
-        ]
-      },
-      kerala: {
-        places: [
-          { id: 'ker-1', name: 'Munnar Tea Museum', visitTime: '09:30 AM – 11:00 AM', durationMins: 90, location: 'Nallathanni, Munnar', estCost: 300, notes: 'Heritage tea processing tour.', lat: 10.0977, lng: 77.0531 },
-          { id: 'ker-2', name: 'Mattupetty Dam & Echo Point', visitTime: '11:30 AM – 01:30 PM', durationMins: 120, location: 'Mattupetty, Munnar', estCost: 200, notes: 'Lakeside hills & boating.', lat: 10.1066, lng: 77.1235 },
-          { id: 'ker-3', name: 'Top Station Mist Viewpoint', visitTime: '02:30 PM – 04:00 PM', durationMins: 90, location: 'Munnar Border', estCost: 150, notes: 'Western Ghats valley views.', lat: 10.1259, lng: 77.2454 },
-          { id: 'ker-4', name: 'Spice Garden Trail', visitTime: '04:45 PM – 06:00 PM', durationMins: 75, location: 'Chithirapuram', estCost: 400, notes: 'Cardamom & pepper walk.', lat: 10.0566, lng: 77.0419 }
-        ],
-        ai: [
-          {
-            id: 'ker-ai-scenic',
-            title: 'Option 1 — Scenic Tea & Valley Loop',
-            recommended: true,
-            desc: 'Follows winding tea-estate ridges with lakeside and valley stops.',
-            perks: ['Tea-estate ridge roads', 'Balanced 3-stop day'],
-            totalKm: 32,
-            totalDuration: '~1 hr 15 min transit (est.)',
-            stops: [
-              { placeId: 'ker-1', legKm: 0, legMin: 0 },
-              { placeId: 'ker-2', legKm: 13, legMin: 30 },
-              { placeId: 'ker-3', legKm: 19, legMin: 45 }
-            ]
-          },
-          {
-            id: 'ker-ai-quick',
-            title: 'Option 2 — Relaxed Spice & Lake',
-            recommended: false,
-            desc: 'Shorter lower-elevation circuit ideal for misty afternoons.',
-            perks: ['Shorter hill drive', 'Relaxed afternoon pace'],
-            totalKm: 23,
-            totalDuration: '~52 min transit (est.)',
-            stops: [
-              { placeId: 'ker-1', legKm: 0, legMin: 0 },
-              { placeId: 'ker-2', legKm: 13, legMin: 30 },
-              { placeId: 'ker-4', legKm: 10, legMin: 22 }
-            ]
-          }
-        ],
-        fast: [
-          {
-            id: 'ker-fast-1',
-            title: 'Option 1 — Munnar Core Express',
-            recommended: true,
-            desc: 'Stays close to town to minimise ghat driving.',
-            perks: ['Minimal hill driving', 'Easy return before dusk'],
-            totalKm: 23,
-            totalDuration: '~52 min transit (est.)',
-            stops: [
-              { placeId: 'ker-1', legKm: 0, legMin: 0 },
-              { placeId: 'ker-4', legKm: 10, legMin: 22 },
-              { placeId: 'ker-2', legKm: 13, legMin: 30 }
-            ]
-          },
-          {
-            id: 'ker-fast-2',
-            title: 'Option 2 — Ridge Two-Stop',
-            recommended: false,
-            desc: 'Two key viewpoints in half a day.',
-            perks: ['2 focused stops', 'Open evening'],
-            totalKm: 13,
-            totalDuration: '~30 min transit (est.)',
-            stops: [
-              { placeId: 'ker-1', legKm: 0, legMin: 0 },
-              { placeId: 'ker-2', legKm: 13, legMin: 30 }
-            ]
-          }
+          { id: 'raj-jai-1', name: 'Heritage Haveli Check-in (Bani Park)', visitTime: '09:30 AM – 10:15 AM', durationMins: 45, location: 'Bani Park, Jaipur', estCost: 0, notes: 'Base check-in & morning chai.', lat: 26.9260, lng: 75.7920 },
+          { id: 'raj-jai-2', name: 'City Palace & Jantar Mantar', visitTime: '10:45 AM – 01:15 PM', durationMins: 150, location: 'Old City, Jaipur', estCost: 1200, notes: 'Estimated entry reference; verify hours locally.', lat: 26.9258, lng: 75.8237 },
+          { id: 'raj-jai-3', name: 'Hawa Mahal & Bapu Bazaar', visitTime: '02:00 PM – 03:45 PM', durationMins: 105, location: 'Sireh Deori, Jaipur', estCost: 450, notes: 'Iconic facade & local craft lanes.', lat: 26.9239, lng: 75.8267 },
+          { id: 'raj-jai-4', name: 'Amer Fort & Panna Meena Stepwell', visitTime: '09:00 AM – 11:30 AM', durationMins: 150, location: 'Amer, Jaipur', estCost: 800, notes: 'Hilltop fort & historic stepwell.', lat: 26.9855, lng: 75.8513 },
+          { id: 'raj-jai-5', name: 'Nahargarh Fort Sunset', visitTime: '04:30 PM – 06:30 PM', durationMins: 120, location: 'Aravalli Hills, Jaipur', estCost: 350, notes: 'Panoramic twilight city views.', lat: 26.9373, lng: 75.8155 }
         ]
       }
     };
 
     const plannerState = {
-      mode: 'ai',
+      mode: 'option1',
       themeKey: 'rajasthan',
-      selectedOptionId: 'raj-ai-scenic',
+      selectedPlaceIds: new Set(),
+      selectedInterests: new Set(['heritage']),
+      aiOptions: { option1: null, option2: null },
       selectedStopIndex: 0,
       customStops: []
     };
 
     function getThemeCatalog() {
-      return DEST_CATALOG[plannerState.themeKey] || DEST_CATALOG.rajasthan;
+      return DEST_CATALOG.rajasthan;
     }
 
     function getPlaceById(placeId) {
-      return getThemeCatalog().places.find(p => p.id === placeId) || getThemeCatalog().places[0];
+      return getThemeCatalog().places.find(p => p.id === placeId) || null;
     }
 
-    function getCurrentOptions() {
-      const cat = getThemeCatalog();
-      return plannerState.mode === 'fast' ? cat.fast : cat.ai;
+    function optionItemsToStops(items) {
+      return (items || [])
+        .filter(it => Number.isFinite(it.lat) && Number.isFinite(it.lng))
+        .map(it => ({
+          id: it.placeId || it.id,
+          placeId: it.placeId || null,
+          dayKey: it.dayKey || 'day-1',
+          name: it.title,
+          visitTime: `Day ${String(it.dayKey || 'day-1').replace(/^day-/i, '')} • ${it.timeLabel}`,
+          timeLabel: it.timeLabel,
+          durationLabel: it.durationLabel,
+          durationMins: 90,
+          location: it.location || 'Jaipur, Rajasthan',
+          estCost: Math.round((it.estimatedCostPaise || 0) / 100),
+          estimatedCostPaise: it.estimatedCostPaise || 0,
+          notes: it.notes || '',
+          lat: it.lat,
+          lng: it.lng
+        }));
     }
 
     function getActiveStopsForMap() {
       if (plannerState.mode === 'customise') {
         return plannerState.customStops;
       }
-      const options = getCurrentOptions();
-      const opt = options.find(o => o.id === plannerState.selectedOptionId) || options[0];
-      return opt.stops.map(s => {
-        const p = getPlaceById(s.placeId);
-        return Object.assign({}, p, { legKm: s.legKm, legMin: s.legMin });
-      });
+      const aiOpt = plannerState.aiOptions[plannerState.mode];
+      if (aiOpt && Array.isArray(aiOpt.items)) {
+        return optionItemsToStops(aiOpt.items);
+      }
+      if (state.activeTripId) {
+        const savedWithCoords = (state.itineraryItems || [])
+          .filter(it => it.tripId === state.activeTripId && Number.isFinite(it.lat) && Number.isFinite(it.lng));
+        if (savedWithCoords.length > 0) {
+          return optionItemsToStops(savedWithCoords);
+        }
+      }
+      return [];
     }
 
     function updatePlaceDetail(stop, index) {
@@ -1752,14 +1606,12 @@
 
       if (!stops.length) {
         updatePlaceDetail(null, 0);
-        return;
+      } else {
+        if (plannerState.selectedStopIndex >= stops.length) {
+          plannerState.selectedStopIndex = 0;
+        }
+        updatePlaceDetail(stops[plannerState.selectedStopIndex], plannerState.selectedStopIndex);
       }
-
-      if (plannerState.selectedStopIndex >= stops.length) {
-        plannerState.selectedStopIndex = 0;
-      }
-
-      updatePlaceDetail(stops[plannerState.selectedStopIndex], plannerState.selectedStopIndex);
 
       renderLeafletMap({
         mapEl,
@@ -1775,135 +1627,132 @@
       });
     }
 
-    function applyStopsToDayItinerary(stops, routeLabel) {
+    async function saveStopsToActiveTrip(items, routeLabel) {
       if (state.isOffline) {
         showToast('Offline Mode: Saving itinerary changes requires internet connectivity.');
         return;
       }
-      const container = document.getElementById('activities-container');
-      if (container && stops.length) {
-        container.innerHTML = '';
-        let totalEst = 0;
-        stops.forEach(stop => {
-          const est = Number(stop.estCost) || 0;
-          totalEst += est;
-          const card = document.createElement('article');
-          card.className = 'activity-card';
-          card.innerHTML = `
-            <div class="activity-time-col">
-              <span class="activity-time">${(stop.visitTime || '10:00 AM').split('–')[0].trim()}</span>
-              <span class="activity-duration">${stop.durationMins || 90} mins</span>
-            </div>
-            <div class="activity-body">
-              <h4 class="activity-title">${stop.name}</h4>
-              <div class="activity-location">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                <span>${stop.location || 'Local Area'}</span>
-              </div>
-              <p class="activity-notes">${stop.notes || 'Added from Itinerary Builder route.'}</p>
-            </div>
-            <div class="activity-cost-col">
-              <span class="cost-estimate-label">Estimated Cost</span>
-              <span class="cost-estimate-val">₹${est.toLocaleString('en-IN')}</span>
-              <button class="btn-delete-item" type="button" title="Delete activity" aria-label="Delete activity">×</button>
-            </div>
-          `;
-          container.appendChild(card);
-        });
+      if (!state.activeTripId) {
+        showToast('Create or select a Jaipur trip first.');
+        return;
+      }
+      const payloadItems = (items || []).map((it, idx) => ({
+        placeId: it.placeId || it.id || null,
+        dayKey: it.dayKey || 'day-1',
+        timeLabel: it.timeLabel || (it.visitTime || '10:00 AM').split('–')[0].trim(),
+        durationLabel: it.durationLabel || `${it.durationMins || 90} mins`,
+        title: it.title || it.name,
+        location: it.location || 'Jaipur, Rajasthan',
+        notes: it.notes || '',
+        estimatedCostPaise: it.estimatedCostPaise !== undefined ? it.estimatedCostPaise : ((Number(it.estCost) || 0) * 100),
+        sortOrder: idx
+      }));
 
-        const dayTotalBadge = document.querySelector('#section-itinerary-builder .sticker');
-        if (dayTotalBadge) dayTotalBadge.textContent = `Day Est. Total: ₹${totalEst.toLocaleString('en-IN')}`;
+      if (state.isAuthenticated) {
+        try {
+          const res = await apiFetch(`/api/workspace/trips/${encodeURIComponent(state.activeTripId)}/itinerary`, {
+            method: 'PUT',
+            body: JSON.stringify({ items: payloadItems })
+          });
+          state.itineraryItems = (state.itineraryItems || [])
+            .filter(it => it.tripId !== state.activeTripId)
+            .concat(Array.isArray(res.itineraryItems) ? res.itineraryItems : []);
+        } catch (err) {
+          showToast(err.message || 'Could not save itinerary to D1.');
+          return;
+        }
+      } else {
+        state.itineraryItems = (state.itineraryItems || [])
+          .filter(it => it.tripId !== state.activeTripId)
+          .concat(payloadItems.map((p, idx) => Object.assign({}, p, { id: `it-local-${idx}`, tripId: state.activeTripId })));
       }
 
-      try {
-        localStorage.setItem(scopedStorageKey(`route_${state.activeTripId}`), JSON.stringify({
-          routeLabel: routeLabel,
-          stops: stops.map(s => s.name),
-          savedAt: new Date().toISOString()
-        }));
-      } catch (e) {
-        // Ignore storage quota issues
-      }
-
-      showToast(`Saved "${routeLabel}" (${stops.length} stops) to your trip itinerary!`);
+      renderActiveTripItineraryList(state.activeTripId);
+      renderMap();
+      if (typeof window.__yatraRenderDashboard === 'function') window.__yatraRenderDashboard();
+      if (typeof window.__yatraRenderMyTrips === 'function') window.__yatraRenderMyTrips();
+      showToast(`Saved "${routeLabel}" (${payloadItems.length} stop(s)) to your Jaipur trip!`);
     }
 
     function renderOptionsAndComparison() {
-      const options = getCurrentOptions();
-      if (!options.some(o => o.id === plannerState.selectedOptionId)) {
-        plannerState.selectedOptionId = options[0].id;
-      }
-
       optionsListEl.innerHTML = '';
       compareGridEl.innerHTML = '';
 
-      options.forEach(opt => {
-        const isSelected = opt.id === plannerState.selectedOptionId;
-        const resolvedStops = opt.stops.map(s => Object.assign({}, getPlaceById(s.placeId), s));
+      const opt1 = plannerState.aiOptions.option1;
+      const opt2 = plannerState.aiOptions.option2;
 
-        // Option Card
-        const card = document.createElement('article');
-        card.className = `route-option-card${isSelected ? ' selected' : ''}`;
-        const stopsHtml = resolvedStops.map((st, idx) => `
+      if (!opt1 && !opt2) {
+        optionsListEl.innerHTML = `
+          <div class="empty-state-card" style="padding: var(--space-lg);">
+            <h3 class="empty-state-title">No AI itinerary generated yet</h3>
+            <p class="empty-state-desc">
+              Select your Jaipur places and trip details above, then click <strong>Generate Itinerary</strong> to get two AI-suggested options—or switch to <strong>Customize Your Own</strong> to build your route manually.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      const activeOpt = plannerState.aiOptions[plannerState.mode] || opt1 || opt2;
+      [opt1, opt2].filter(Boolean).forEach(opt => {
+        const isSelected = activeOpt && opt.id === activeOpt.id;
+        const stopsHtml = (opt.items || []).map((st, idx) => `
           <li>
-            ${idx > 0 ? `<div class="route-leg-meta">↳ ${st.legKm} km • Est. ~${st.legMin} min travel</div>` : ''}
             <div class="route-stop-row">
               <div class="route-stop-left">
                 <span class="route-stop-num">${idx + 1}</span>
-                <span class="route-stop-name">${st.name}</span>
+                <span class="route-stop-name">${escapeHtmlAttr(st.title)}</span>
               </div>
-              <span class="route-stop-time">${st.visitTime}</span>
+              <span class="route-stop-time">Day ${String(st.dayKey || 'day-1').replace(/^day-/i, '')} • ${escapeHtmlAttr(st.timeLabel)}</span>
             </div>
           </li>
         `).join('');
 
+        const card = document.createElement('article');
+        card.className = `route-option-card${isSelected ? ' selected' : ''}`;
         card.innerHTML = `
           <div class="route-option-top">
-            <h3 class="route-option-title">${opt.title}</h3>
-            ${opt.recommended ? '<span class="route-recommended-badge">Recommended</span>' : ''}
+            <h3 class="route-option-title">${escapeHtmlAttr(opt.title)}</h3>
+            <span class="route-recommended-badge">AI Suggestion</span>
           </div>
-          <p class="route-option-desc">${opt.desc}</p>
+          <p class="route-option-desc">${escapeHtmlAttr(opt.summary)}</p>
           <ul class="route-option-stops">${stopsHtml}</ul>
           <div class="route-option-footer">
-            <span class="route-total-pill">Total: ${opt.totalKm} km • ${opt.totalDuration}</span>
-            <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-select-route" style="min-height: 40px; padding: 6px 14px; font-size: 0.8125rem;">
-              ${isSelected ? 'Selected on Map' : 'Preview on Map'}
-            </button>
+            <span class="route-total-pill">Illustrative order • ${(opt.items || []).length} stop(s)</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-select-route" style="min-height: 40px; padding: 6px 14px; font-size: 0.8125rem;">
+                ${isSelected ? 'Previewing on Map' : 'Preview on Map'}
+              </button>
+              <button type="button" class="btn btn-primary btn-save-ai-option" style="min-height: 40px; padding: 6px 14px; font-size: 0.8125rem;">
+                Select &amp; Save
+              </button>
+            </div>
           </div>
         `;
 
         card.querySelector('.btn-select-route').addEventListener('click', function () {
-          plannerState.selectedOptionId = opt.id;
-          plannerState.selectedStopIndex = 0;
-          window.__yatraRenderItineraryMap = renderMap;
-    renderOptionsAndComparison();
-          renderMap();
+          setPlanningMode(opt.id);
+        });
+        card.querySelector('.btn-save-ai-option').addEventListener('click', function () {
+          saveStopsToActiveTrip(opt.items, opt.title);
         });
         optionsListEl.appendChild(card);
 
-        // Comparison Card
         const comp = document.createElement('article');
         comp.className = `route-compare-card${isSelected ? ' selected' : ''}`;
         comp.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-            <strong style="font-size: 0.875rem;">${opt.title.split('—')[0].trim()}</strong>
-            ${opt.recommended ? '<span class="route-recommended-badge">Best Fit</span>' : ''}
+            <strong style="font-size: 0.875rem;">${escapeHtmlAttr(opt.title)}</strong>
+            <span class="route-recommended-badge">AI</span>
           </div>
-          <div class="route-compare-metrics">${opt.totalKm} km • ${opt.totalDuration}</div>
-          <ul class="route-compare-perks">
-            ${opt.perks.map(p => `<li>✓ ${p}</li>`).join('')}
-          </ul>
+          <div class="route-compare-metrics">${(opt.items || []).length} stops • ${escapeHtmlAttr(opt.summary)}</div>
           <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-save-compared" style="width: 100%; min-height: 40px; padding: 6px 12px; font-size: 0.8125rem;">
             Select &amp; Save
           </button>
         `;
         comp.querySelector('.btn-save-compared').addEventListener('click', function () {
-          plannerState.selectedOptionId = opt.id;
-          plannerState.selectedStopIndex = 0;
-          window.__yatraRenderItineraryMap = renderMap;
-    renderOptionsAndComparison();
-          renderMap();
-          applyStopsToDayItinerary(resolvedStops, opt.title);
+          setPlanningMode(opt.id);
+          saveStopsToActiveTrip(opt.items, opt.title);
         });
         compareGridEl.appendChild(comp);
       });
@@ -1962,7 +1811,7 @@
       });
 
       if (customiseTotalsEl) {
-        customiseTotalsEl.textContent = `${plannerState.customStops.length} stops • Est. ${totalKm} km (~${totalMin} min)`;
+        customiseTotalsEl.textContent = `${plannerState.customStops.length} stop(s) • Illustrative line`;
       }
     }
 
@@ -1992,7 +1841,7 @@
         optionsListEl.style.display = 'flex';
         if (customisePanelEl) customisePanelEl.hidden = true;
         window.__yatraRenderItineraryMap = renderMap;
-    renderOptionsAndComparison();
+        renderOptionsAndComparison();
       }
 
       renderMap();
@@ -2017,7 +1866,7 @@
       btnAddCurated.addEventListener('click', function () {
         const place = getPlaceById(placeSelectEl.value);
         if (!place) return;
-        plannerState.customStops.push(Object.assign({}, place, { legKm: 5, legMin: 15 }));
+        plannerState.customStops.push(Object.assign({}, place, { placeId: place.id, legKm: 0, legMin: 0 }));
         renderCustomiseStops();
         renderMap();
         showToast(`Added "${place.name}" to your custom route.`);
@@ -2035,26 +1884,23 @@
           if (nameInput) nameInput.focus();
           return;
         }
-        const count = plannerState.customStops.length;
-        const x = 110 + ((count * 95) % 390);
-        const y = 85 + ((count * 55) % 165);
+        // Custom free-text places have no verified coordinates, so omit from map markers (lat/lng null)
         plannerState.customStops.push({
           id: `custom-${Date.now()}`,
+          placeId: null,
           name: name,
           visitTime: (timeInput && timeInput.value.trim()) || '04:00 PM',
           durationMins: 90,
-          location: 'Custom Place',
-          estCost: 300,
-          notes: 'User-added custom itinerary stop.',
-          x: x,
-          y: y,
-          legKm: 6,
-          legMin: 18
+          location: 'Custom Place (Unmapped)',
+          estCost: 0,
+          notes: 'User-added stop without verified coordinates.',
+          lat: null,
+          lng: null
         });
         if (nameInput) nameInput.value = '';
         renderCustomiseStops();
         renderMap();
-        showToast(`Added custom stop "${name}".`);
+        showToast(`Added "${name}" (no verified coordinates — omitted from map markers).`);
       });
     }
 
@@ -2064,23 +1910,165 @@
           showToast('Add at least one stop before saving your custom route.');
           return;
         }
-        applyStopsToDayItinerary(plannerState.customStops, 'Customised Route');
+        saveStopsToActiveTrip(plannerState.customStops, 'Customize Your Own');
       });
     }
 
     window.__yatraRefreshItineraryPlanner = function (trip) {
-      plannerState.themeKey = (trip && trip.theme && DEST_CATALOG[trip.theme]) ? trip.theme : 'rajasthan';
-      const cat = getThemeCatalog();
-      plannerState.selectedOptionId = cat.ai[0].id;
-      plannerState.customStops = cat.places.slice(0, 3).map((p, idx) => Object.assign({}, p, {
-        legKm: idx === 0 ? 0 : 6,
-        legMin: idx === 0 ? 0 : 16
-      }));
+      plannerState.themeKey = 'rajasthan';
       populateCustomiseSelect();
       setPlanningMode(plannerState.mode);
     };
 
     window.__yatraRefreshItineraryPlanner(state.trips[0]);
+
+    const aiPlacesGroup = document.getElementById('ai-jaipur-places-group');
+    const aiInterestsGroup = document.getElementById('ai-interests-group');
+    const btnAiGenerate = document.getElementById('btn-generate-ai-itinerary');
+    const aiDurationEl = document.getElementById('ai-trip-duration');
+    const aiPacingEl = document.getElementById('ai-trip-pacing');
+    const aiStatusEl = document.getElementById('ai-itinerary-status');
+
+    function updateGenerateButtonState() {
+      if (!btnAiGenerate) return;
+      const days = parseInt(aiDurationEl?.value || '0', 10);
+      const hasPlaces = plannerState.selectedPlaceIds.size >= 1;
+      const hasDays = Number.isFinite(days) && days >= 1 && days <= 14;
+      const hasPacing = Boolean(aiPacingEl && aiPacingEl.value);
+      const hasInterests = plannerState.selectedInterests.size >= 1;
+      const ready = hasPlaces && hasDays && hasPacing && hasInterests;
+      btnAiGenerate.disabled = !ready;
+      if (aiStatusEl && !aiStatusEl.dataset.lockedMsg) {
+        aiStatusEl.textContent = ready
+          ? `${plannerState.selectedPlaceIds.size} Jaipur place(s) selected. Click Generate Itinerary to request two AI options.`
+          : 'Select at least one Jaipur place, valid duration (1–14 days), pace, and interest to enable Generate Itinerary.';
+        aiStatusEl.style.color = 'var(--color-text-muted)';
+      }
+    }
+
+    if (aiPlacesGroup) {
+      aiPlacesGroup.innerHTML = getThemeCatalog().places.map(p => (
+        `<button type="button" class="explore-vibe-chip" data-ai-place-id="${p.id}" aria-pressed="false">${escapeHtmlAttr(p.name)}</button>`
+      )).join('');
+      aiPlacesGroup.querySelectorAll('[data-ai-place-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pid = btn.getAttribute('data-ai-place-id');
+          if (!pid) return;
+          if (plannerState.selectedPlaceIds.has(pid)) {
+            plannerState.selectedPlaceIds.delete(pid);
+            btn.classList.remove('active');
+            btn.setAttribute('aria-pressed', 'false');
+          } else {
+            plannerState.selectedPlaceIds.add(pid);
+            btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
+          }
+          if (aiStatusEl) delete aiStatusEl.dataset.lockedMsg;
+          updateGenerateButtonState();
+        });
+      });
+    }
+
+    if (aiInterestsGroup) {
+      aiInterestsGroup.querySelectorAll('[data-interest]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const interest = btn.getAttribute('data-interest');
+          if (!interest) return;
+          if (plannerState.selectedInterests.has(interest)) {
+            plannerState.selectedInterests.delete(interest);
+            btn.classList.remove('active');
+            btn.setAttribute('aria-pressed', 'false');
+          } else {
+            plannerState.selectedInterests.add(interest);
+            btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
+          }
+          if (aiStatusEl) delete aiStatusEl.dataset.lockedMsg;
+          updateGenerateButtonState();
+        });
+      });
+    }
+
+    if (aiDurationEl) aiDurationEl.addEventListener('input', updateGenerateButtonState);
+    if (aiPacingEl) aiPacingEl.addEventListener('change', updateGenerateButtonState);
+    updateGenerateButtonState();
+
+    if (btnAiGenerate) {
+      btnAiGenerate.addEventListener('click', async function () {
+        if (!state.isAuthenticated) {
+          if (aiStatusEl) {
+            aiStatusEl.dataset.lockedMsg = '1';
+            aiStatusEl.textContent = 'Sign in to generate and save a Gemini AI itinerary.';
+            aiStatusEl.style.color = 'var(--color-state-error)';
+          }
+          return;
+        }
+        if (state.isOffline) {
+          if (aiStatusEl) {
+            aiStatusEl.dataset.lockedMsg = '1';
+            aiStatusEl.textContent = 'Offline Mode: Generating an AI itinerary requires internet connectivity. Use Customize Your Own offline.';
+            aiStatusEl.style.color = 'var(--color-state-error)';
+          }
+          return;
+        }
+        const activeTrip = state.trips.find(t => t.id === state.activeTripId);
+        if (!activeTrip) {
+          showToast('Create or select a Jaipur trip first.');
+          return;
+        }
+
+        const selectedPlaceIds = Array.from(plannerState.selectedPlaceIds);
+        const durationDays = Math.max(1, Math.min(14, parseInt(aiDurationEl?.value || '3', 10) || 3));
+        const pacing = aiPacingEl ? aiPacingEl.value : 'relaxed';
+        const budgetPref = document.getElementById('profile-budget-pref')?.value || 'balanced';
+        const interests = Array.from(plannerState.selectedInterests);
+
+        btnAiGenerate.disabled = true;
+        if (aiStatusEl) {
+          aiStatusEl.dataset.lockedMsg = '1';
+          aiStatusEl.textContent = 'Generating Option 1 and Option 2 with Google Gemini...';
+          aiStatusEl.style.color = 'var(--color-text-secondary)';
+        }
+
+        try {
+          const res = await apiFetch(`/api/workspace/trips/${encodeURIComponent(activeTrip.id)}/ai-itinerary`, {
+            method: 'POST',
+            body: JSON.stringify({
+              stateKey: 'rajasthan',
+              selectedPlaces: ['jaipur'],
+              selectedPlaceIds,
+              durationDays,
+              pacing,
+              budgetPref,
+              interests
+            })
+          });
+
+          const opts = Array.isArray(res.options) ? res.options : [];
+          plannerState.aiOptions.option1 = opts[0] || null;
+          plannerState.aiOptions.option2 = opts[1] || null;
+
+          setPlanningMode('option1');
+
+          const unmatchedNote = res.unmatchedCount > 0
+            ? ` (${res.unmatchedCount} unverified stop(s) omitted from map markers.)`
+            : '';
+          if (aiStatusEl) {
+            aiStatusEl.textContent = `${res.disclaimer}${unmatchedNote}`;
+            aiStatusEl.style.color = 'var(--color-state-success)';
+          }
+          showToast('Generated Option 1 and Option 2! Preview on the map or click Select & Save.');
+        } catch (err) {
+          if (aiStatusEl) {
+            aiStatusEl.textContent = `${err.message || 'Could not generate AI itinerary.'} Your selected places were preserved—you can retry or use Customize Your Own.`;
+            aiStatusEl.style.color = 'var(--color-state-error)';
+          }
+          showToast(err.message || 'AI itinerary generation unavailable.');
+        } finally {
+          updateGenerateButtonState();
+        }
+      });
+    }
   }
 
   // --- 10. Dashboard Overview (Real User & Project Data) ---
@@ -2323,10 +2311,15 @@
           `;
           rec.querySelector('.btn-dash-plan-dest').addEventListener('click', function () {
             openModal(document.getElementById('modal-create-trip'));
-            const destInput = document.getElementById('new-trip-destination');
+            const stateSel = document.getElementById('new-trip-state');
+            if (stateSel) {
+              stateSel.value = 'rajasthan';
+              renderStateDestinationChips('rajasthan', ['jaipur']);
+            }
             const nameInput = document.getElementById('new-trip-name');
-            if (destInput) destInput.value = name;
-            if (nameInput) nameInput.value = `${name.split(' ')[0]} Exploration`;
+            if (nameInput) nameInput.value = `${name.split(' ')[0]} Trip`;
+            const durInput = document.getElementById('new-trip-duration');
+            if (durInput) durInput.focus();
           });
           recommendedGridEl.appendChild(rec);
         });
@@ -2488,23 +2481,13 @@
     if (!placesListEl) return;
 
     const DEST_VIBES = {
-      'dest-rajasthan': ['heritage'],
-      'dest-kerala': ['nature', 'coastal'],
-      'dest-ladakh': ['nature', 'spiritual'],
-      'dest-varanasi': ['heritage', 'spiritual'],
-      'dest-goa': ['coastal', 'heritage']
+      'dest-rajasthan': ['heritage']
     };
 
     const PLACES_CATALOG = [
       { id: 'exp-1', destId: 'dest-rajasthan', name: 'City Palace & Jantar Mantar', location: 'Old City, Jaipur', vibe: 'heritage', category: 'fort-palace', distanceKm: 4, estMin: 15, rating: 4.7, ratingSource: 'Curated guide', estCost: 1200, desc: 'Royal courtyard complex and astronomical observatory.', x: 185, y: 120 },
       { id: 'exp-2', destId: 'dest-rajasthan', name: 'Hawa Mahal & Bapu Bazaar', location: 'Pink City, Jaipur', vibe: 'heritage', category: 'market-culture', distanceKm: 2, estMin: 8, rating: 4.6, ratingSource: 'Curated guide', estCost: 450, desc: 'Iconic sandstone facade and craft shopping lanes.', x: 310, y: 185 },
-      { id: 'exp-3', destId: 'dest-rajasthan', name: 'Amer Fort & Stepwell', location: 'Amer, Jaipur', vibe: 'heritage', category: 'fort-palace', distanceKm: 11, estMin: 28, rating: 4.8, ratingSource: 'Curated guide', estCost: 800, desc: 'Hilltop palace overlooking Maota Lake.', x: 460, y: 95 },
-      { id: 'exp-4', destId: 'dest-kerala', name: 'Mattupetty Dam & Echo Point', location: 'Munnar, Kerala', vibe: 'nature', category: 'nature', distanceKm: 13, estMin: 30, rating: 4.5, ratingSource: 'Curated guide', estCost: 200, desc: 'Misty lakeside hills and tea-estate views.', x: 140, y: 215 },
-      { id: 'exp-5', destId: 'dest-kerala', name: 'Alleppey Backwater Cruise', location: 'Alleppey, Kerala', vibe: 'coastal', category: 'beach-water', distanceKm: 18, estMin: 40, rating: 4.7, ratingSource: 'Curated guide', estCost: 1500, desc: 'Tranquil palm-lined canals and village waterways.', x: 350, y: 245 },
-      { id: 'exp-6', destId: 'dest-goa', name: 'Palolem & Agonda Coast', location: 'South Goa', vibe: 'coastal', category: 'beach-water', distanceKm: 5, estMin: 14, rating: 4.8, ratingSource: 'Curated guide', estCost: 300, desc: 'Calm crescent beaches framed by coconut palms.', x: 120, y: 110 },
-      { id: 'exp-7', destId: 'dest-goa', name: 'Fontainhas Latin Quarter', location: 'Panaji, Goa', vibe: 'heritage', category: 'market-culture', distanceKm: 3, estMin: 10, rating: 4.6, ratingSource: 'Curated guide', estCost: 250, desc: 'Colorful heritage lanes, bakeries, and galleries.', x: 270, y: 135 },
-      { id: 'exp-8', destId: 'dest-varanasi', name: 'Dashashwamedh Ghat Aarti', location: 'Varanasi, UP', vibe: 'spiritual', category: 'market-culture', distanceKm: 2, estMin: 10, rating: 4.9, ratingSource: 'Curated guide', estCost: 0, desc: 'Evening Ganga Aarti ceremony along historic steps.', x: 430, y: 210 },
-      { id: 'exp-9', destId: 'dest-ladakh', name: 'Pangong & Nubra Pass', location: 'Leh, Ladakh', vibe: 'nature', category: 'nature', distanceKm: 24, estMin: 55, rating: null, ratingSource: null, estCost: 600, desc: 'High-altitude mountain lakes and desert dunes.', x: 500, y: 155 }
+      { id: 'exp-3', destId: 'dest-rajasthan', name: 'Amer Fort & Stepwell', location: 'Amer, Jaipur', vibe: 'heritage', category: 'fort-palace', distanceKm: 11, estMin: 28, rating: 4.8, ratingSource: 'Curated guide', estCost: 800, desc: 'Hilltop palace overlooking Maota Lake.', x: 460, y: 95 }
     ];
 
     const exploreState = {
@@ -2513,10 +2496,7 @@
       distance: 'all',
       sort: 'recommended',
       highlightedPlaceId: null,
-      selectedPlaceIdsByTrip: {
-        'trip-1': ['exp-1', 'exp-2'],
-        'trip-2': ['exp-4', 'exp-5']
-      }
+      selectedPlaceIdsByTrip: {}
     };
 
     function populateTargetTrips() {
@@ -5043,7 +5023,7 @@
     initAchievementsTracker();
     initProfileSettings();
     initTripReviews();
-    syncActiveTripUI('trip-1');
+    syncActiveTripUI(state.activeTripId);
     if (typeof window.__yatraRenderDashboard === 'function') window.__yatraRenderDashboard();
   });
 })();
